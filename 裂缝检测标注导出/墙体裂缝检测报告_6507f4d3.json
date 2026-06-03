@@ -1,0 +1,201 @@
+{
+  "report_id": "6507f4d3",
+  "report_title": "墙体裂缝检测审核报告",
+  "generated_at": "2026-05-22 10:01:48",
+  "project_info": {
+    "project_name": "墙体裂缝检测项目",
+    "location": "待填写",
+    "inspector": "AI自动检测"
+  },
+  "image_info": {
+    "filename": "43e997c2_DJI_20260511095811_0008_V.JPG",
+    "image_size": {
+      "width": 5280,
+      "height": 3956
+    }
+  },
+  "detection_summary": {
+    "total_cracks": 9,
+    "has_crack": true,
+    "severity": "危险",
+    "severity_color": "#ef4444",
+    "severity_description": "裂缝宽度>2mm，需紧急处理",
+    "class_distribution": {
+      "potted plant": 5,
+      "chair": 1,
+      "bench": 2,
+      "bird": 1
+    },
+    "max_confidence": 0.8457
+  },
+  "detection_details": [
+    {
+      "class_id": 58,
+      "class_name": "potted plant",
+      "confidence": 0.8457,
+      "bbox": {
+        "x1": 4139.14,
+        "y1": 3693.6,
+        "x2": 4507.93,
+        "y2": 3956
+      },
+      "width": 368.79,
+      "height": 262.4,
+      "area": 96771.59
+    },
+    {
+      "class_id": 58,
+      "class_name": "potted plant",
+      "confidence": 0.81,
+      "bbox": {
+        "x1": 1465.37,
+        "y1": 3217.51,
+        "x2": 1867.31,
+        "y2": 3557.85
+      },
+      "width": 401.94,
+      "height": 340.34,
+      "area": 136796.23
+    },
+    {
+      "class_id": 58,
+      "class_name": "potted plant",
+      "confidence": 0.7325,
+      "bbox": {
+        "x1": 4234.83,
+        "y1": 2408.29,
+        "x2": 4813.28,
+        "y2": 3085.7
+      },
+      "width": 578.44,
+      "height": 677.4,
+      "area": 391841.01
+    },
+    {
+      "class_id": 56,
+      "class_name": "chair",
+      "confidence": 0.634,
+      "bbox": {
+        "x1": 3660.65,
+        "y1": 2392.14,
+        "x2": 3925.81,
+        "y2": 2767.64
+      },
+      "width": 265.16,
+      "height": 375.5,
+      "area": 99567.36
+    },
+    {
+      "class_id": 58,
+      "class_name": "potted plant",
+      "confidence": 0.5977,
+      "bbox": {
+        "x1": 1244.8,
+        "y1": 2515.43,
+        "x2": 1963.16,
+        "y2": 3169.45
+      },
+      "width": 718.36,
+      "height": 654.01,
+      "area": 469818.53
+    },
+    {
+      "class_id": 58,
+      "class_name": "potted plant",
+      "confidence": 0.527,
+      "bbox": {
+        "x1": 3934.9,
+        "y1": 3672.96,
+        "x2": 4171.11,
+        "y2": 3956
+      },
+      "width": 236.21,
+      "height": 283.04,
+      "area": 66855.56
+    },
+    {
+      "class_id": 13,
+      "class_name": "bench",
+      "confidence": 0.3426,
+      "bbox": {
+        "x1": 4863.28,
+        "y1": 2602.14,
+        "x2": 5278.04,
+        "y2": 2905.08
+      },
+      "width": 414.76,
+      "height": 302.94,
+      "area": 125644.99
+    },
+    {
+      "class_id": 13,
+      "class_name": "bench",
+      "confidence": 0.295,
+      "bbox": {
+        "x1": 786.57,
+        "y1": 2374.12,
+        "x2": 1718.39,
+        "y2": 2771.56
+      },
+      "width": 931.82,
+      "height": 397.44,
+      "area": 370340.71
+    },
+    {
+      "class_id": 14,
+      "class_name": "bird",
+      "confidence": 0.2745,
+      "bbox": {
+        "x1": 1691.2,
+        "y1": 1312.72,
+        "x2": 1859.39,
+        "y2": 1477.13
+      },
+      "width": 168.19,
+      "height": 164.4,
+      "area": 27651.81
+    }
+  ],
+  "ai_analysis": {
+    "crack_found": true,
+    "crack_description": "检测到9处裂缝，类型包括potted plant, chair, bench, bird",
+    "crack_types": [
+      "potted plant",
+      "chair",
+      "bench",
+      "bird"
+    ],
+    "estimated_width": ">2mm",
+    "possible_causes": [
+      "温度应力",
+      "材料收缩",
+      "地基沉降"
+    ],
+    "risk_assessment": "检测到危险程度裂缝，需立即处理",
+    "risk_level": "极高",
+    "repair_suggestions": [
+      "对裂缝进行标记和记录",
+      "使用裂缝测宽仪精确测量裂缝宽度",
+      "根据裂缝类型选择合适的修复方案",
+      "修复后持续观察是否有新发展"
+    ],
+    "urgency": "立即处理",
+    "professional_opinion": "墙体存在危险程度裂缝，建议立即处理。需进一步检测确认裂缝深度和走向，评估对结构安全的影响。"
+  },
+  "conclusion": "经YOLO11目标检测与QWEN-VL视觉语言模型联合分析，该墙体共检测到9处裂缝，裂缝类型包括potted plant、chair、bench、bird，严重程度评估为「危险」，风险等级为「极高」。墙体存在危险程度裂缝，建议立即处理。需进一步检测确认裂缝深度和走向，评估对结构安全的影响。",
+  "recommendations": [
+    "对检测区域进行标记，建立裂缝档案",
+    "使用专业裂缝测宽仪进行精确测量",
+    "记录裂缝位置、走向、宽度等参数",
+    "立即安排结构安全评估",
+    "对危险区域设置安全警示和隔离",
+    "制定紧急修复方案并尽快实施",
+    "考虑临时支撑等应急措施",
+    "修复后进行持续监测不少于6个月",
+    "对裂缝进行标记和记录",
+    "使用裂缝测宽仪精确测量裂缝宽度",
+    "根据裂缝类型选择合适的修复方案",
+    "修复后持续观察是否有新发展"
+  ],
+  "report_path": "g:\\bangong\\qiangtijiance\\static\\reports\\report_6507f4d3.json"
+}

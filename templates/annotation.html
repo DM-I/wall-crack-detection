@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据标注 - 墙体裂缝检测系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #3b82f6; --primary-dark: #2563eb; --success: #22c55e;
+            --warning: #eab308; --danger: #ef4444; --orange: #f97316; --purple: #8b5cf6;
+            --bg: #f0f4f8; --card: #ffffff; --text: #1e293b; --text-secondary: #64748b;
+            --border: #e2e8f0; --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            --radius: 12px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+        .header { background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #3b82f6 100%); color: white; padding: 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 20px rgba(37,99,235,0.3); }
+        .header-inner { max-width: 1600px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+        .header-logo { display: flex; align-items: center; gap: 12px; }
+        .header-logo svg { width: 32px; height: 32px; }
+        .header-title { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+        .header-subtitle { font-size: 11px; opacity: 0.8; }
+        .header-badge { display: flex; gap: 8px; align-items: center; }
+        .badge { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .nav-links { display: flex; gap: 6px; margin-left: 24px; }
+        .nav-link { color: rgba(255,255,255,0.8); text-decoration: none; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+        .nav-link:hover { background: rgba(255,255,255,0.15); color: white; }
+        .nav-link.active { background: rgba(255,255,255,0.25); color: white; }
+        .header-left { display: flex; align-items: center; }
+        .container { max-width: 1600px; margin: 0 auto; padding: 16px 24px; height: calc(100vh - 56px); display: flex; flex-direction: column; }
+        .main-grid { display: grid; grid-template-columns: 340px 1fr; gap: 16px; flex: 1; min-height: 0; }
+        .left-panel { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-right: 4px; }
+        .right-panel { display: flex; flex-direction: column; min-height: 0; }
+        .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+        .card-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+        .card-header svg { width: 16px; height: 16px; color: var(--primary); }
+        .card-body { padding: 16px; }
+        .form-group { margin-bottom: 12px; }
+        .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+        .form-input { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; transition: border-color 0.2s; outline: none; }
+        .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .form-select { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; outline: none; background: white; cursor: pointer; }
+        .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn svg { width: 16px; height: 16px; }
+        .btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37,99,235,0.4); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: #f1f5f9; color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #16a34a; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        .btn-block { width: 100%; }
+        .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+        .dataset-list { max-height: 180px; overflow-y: auto; }
+        .dataset-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 8px; margin-bottom: 4px; cursor: pointer; transition: background 0.2s; font-size: 13px; }
+        .dataset-item:hover { background: #f1f5f9; }
+        .dataset-item.active { background: #eff6ff; border: 1px solid #bfdbfe; }
+        .dataset-item-info { flex: 1; min-width: 0; }
+        .dataset-item-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dataset-item-desc { font-size: 11px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dataset-item-actions { display: flex; gap: 4px; }
+        .dataset-item-actions .btn { padding: 3px 6px; font-size: 11px; }
+        .image-list { max-height: 200px; overflow-y: auto; }
+        .image-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; border-radius: 6px; margin-bottom: 2px; cursor: pointer; font-size: 12px; transition: background 0.2s; }
+        .image-item:hover { background: #f1f5f9; }
+        .image-item.active { background: #eff6ff; font-weight: 600; color: var(--primary); }
+        .image-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+        .image-item-delete { color: var(--danger); cursor: pointer; margin-left: 6px; font-size: 14px; }
+        .upload-zone { border: 2px dashed var(--border); border-radius: 8px; padding: 16px 12px; text-align: center; cursor: pointer; transition: all 0.3s; background: #f8fafc; }
+        .upload-zone:hover, .upload-zone.dragover { border-color: var(--primary); background: #eff6ff; }
+        .upload-zone svg { width: 28px; height: 28px; color: var(--primary); margin-bottom: 4px; }
+        .upload-zone p { color: var(--text-secondary); font-size: 12px; }
+        .upload-zone input { display: none; }
+        .canvas-container { flex: 1; background: #1a1a2e; border-radius: var(--radius); overflow: hidden; position: relative; display: flex; flex-direction: column; }
+        .canvas-toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #1e293b; border-bottom: 1px solid #334155; flex-shrink: 0; flex-wrap: wrap; }
+        .canvas-toolbar .btn { background: #334155; color: #e2e8f0; border: 1px solid #475569; font-size: 11px; padding: 5px 9px; }
+        .canvas-toolbar .btn:hover { background: #475569; }
+        .canvas-toolbar .btn.active { background: var(--primary); border-color: var(--primary); color: white; }
+        .canvas-toolbar .btn.active-polygon { background: var(--purple); border-color: var(--purple); color: white; }
+        .canvas-toolbar .btn.active-edit { background: var(--orange); border-color: var(--orange); color: white; }
+        .canvas-toolbar .separator { width: 1px; height: 24px; background: #475569; }
+        .canvas-toolbar .zoom-info { color: #94a3b8; font-size: 12px; font-weight: 600; min-width: 50px; text-align: center; }
+        .canvas-toolbar .class-select { background: #334155; color: #e2e8f0; border: 1px solid #475569; border-radius: 6px; padding: 5px 8px; font-size: 12px; outline: none; }
+        .canvas-toolbar .class-select option { background: #1e293b; color: #e2e8f0; }
+        .canvas-toolbar .hint-text { color: #94a3b8; font-size: 10px; margin-left: 4px; }
+        .canvas-wrapper { flex: 1; position: relative; overflow: hidden; cursor: crosshair; }
+        .canvas-wrapper.panning { cursor: grab; }
+        .canvas-wrapper.panning:active { cursor: grabbing; }
+        .canvas-wrapper.polygon-drawing { cursor: crosshair; }
+        .canvas-wrapper canvas { position: absolute; top: 0; left: 0; }
+        .canvas-status { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: #1e293b; border-top: 1px solid #334155; font-size: 11px; color: #94a3b8; flex-shrink: 0; }
+        .annotation-panel { width: 300px; background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); display: flex; flex-direction: column; margin-left: 12px; flex-shrink: 0; }
+        .annotation-panel .card-header { padding: 10px 14px; font-size: 13px; }
+        .annotation-list { flex: 1; overflow-y: auto; padding: 8px; }
+        .annotation-item { display: flex; align-items: flex-start; padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; font-size: 12px; border: 1px solid var(--border); transition: all 0.2s; cursor: pointer; }
+        .annotation-item:hover { border-color: var(--primary); background: #f8fafc; }
+        .annotation-item.selected { border-color: var(--orange); background: #fff7ed; border-width: 2px; }
+        .annotation-item-color { width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; flex-shrink: 0; margin-top: 2px; }
+        .annotation-item-info { flex: 1; min-width: 0; }
+        .annotation-item-class { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .annotation-item-type { font-size: 9px; padding: 1px 5px; border-radius: 3px; background: #f1f5f9; color: var(--text-secondary); }
+        .annotation-item-coords { font-size: 10px; color: var(--text-secondary); font-family: monospace; margin-top: 2px; }
+        .annotation-item-actions { display: flex; gap: 3px; flex-shrink: 0; margin-left: 4px; }
+        .annotation-item-actions span { cursor: pointer; padding: 2px 4px; font-size: 12px; border-radius: 3px; }
+        .annotation-item-actions .act-edit { color: var(--orange); }
+        .annotation-item-actions .act-delete { color: var(--danger); }
+        .annotation-item-actions .act-edit:hover { background: #fff7ed; }
+        .annotation-item-actions .act-delete:hover { background: #fef2f2; }
+        .annotation-panel-footer { padding: 10px; border-top: 1px solid var(--border); display: flex; gap: 6px; }
+        .annotation-panel-footer .btn { flex: 1; font-size: 12px; padding: 7px 10px; }
+        .canvas-area { display: flex; flex: 1; min-height: 0; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; border-radius: var(--radius); padding: 24px; width: 420px; max-width: 90vw; box-shadow: var(--shadow-lg); }
+        .modal h3 { font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .modal .form-group { margin-bottom: 14px; }
+        .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+        .slider-group { margin-bottom: 12px; }
+        .slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .slider-value { font-size: 12px; font-weight: 600; color: var(--primary); background: #eff6ff; padding: 2px 8px; border-radius: 4px; }
+        input[type="range"] { width: 100%; height: 5px; -webkit-appearance: none; background: var(--border); border-radius: 3px; outline: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--primary); cursor: pointer; box-shadow: 0 2px 6px rgba(59,130,246,0.4); }
+        .toast { position: fixed; top: 80px; right: 24px; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; z-index: 2000; transform: translateX(120%); transition: transform 0.3s; box-shadow: var(--shadow-lg); }
+        .toast.show { transform: translateX(0); }
+        .toast-success { background: var(--success); color: white; }
+        .toast-error { background: var(--danger); color: white; }
+        .toast-info { background: var(--primary); color: white; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; }
+        .loading-overlay.active { display: flex; }
+        .loading-box { background: white; border-radius: var(--radius); padding: 28px 40px; text-align: center; box-shadow: var(--shadow-lg); }
+        .loading-spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 15px; font-weight: 600; color: var(--text); }
+        .loading-subtext { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+        .empty-canvas { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #64748b; }
+        .empty-canvas svg { width: 64px; height: 64px; color: #334155; margin-bottom: 12px; }
+        .empty-canvas p { font-size: 14px; }
+        .empty-canvas .hint { font-size: 12px; color: #475569; margin-top: 4px; }
+        .tag { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; background: #eff6ff; color: var(--primary); border: 1px solid #bfdbfe; }
+        .nav-image { display: flex; align-items: center; gap: 6px; }
+        .nav-image .btn { padding: 4px 8px; font-size: 11px; }
+        .nav-image span { color: #94a3b8; font-size: 12px; min-width: 60px; text-align: center; }
+        .classes-editor { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+        .class-tag { display: flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-size: 11px; background: #f1f5f9; border: 1px solid var(--border); }
+        .class-tag-color { width: 10px; height: 10px; border-radius: 2px; }
+        .class-tag-remove { cursor: pointer; color: var(--danger); font-weight: bold; font-size: 13px; }
+        .add-class-row { display: flex; gap: 4px; margin-top: 6px; }
+        .add-class-row input { flex: 1; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; outline: none; }
+        .add-class-row input:focus { border-color: var(--primary); }
+        .edit-menu { position: absolute; background: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 4px; z-index: 200; display: none; flex-direction: column; gap: 2px; }
+        .edit-menu button { background: none; border: none; color: #e2e8f0; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; text-align: left; white-space: nowrap; }
+        .edit-menu button:hover { background: #334155; }
+        @media (max-width: 1024px) { .main-grid { grid-template-columns: 1fr; } .annotation-panel { width: 100%; margin-left: 0; margin-top: 12px; } .canvas-area { flex-direction: column; } }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-inner">
+        <div class="header-left">
+            <div class="header-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
+                <div>
+                    <div class="header-title">墙体裂缝检测系统</div>
+                    <div class="header-subtitle">数据标注模块</div>
+                </div>
+            </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link">🏠 首页</a>
+                <a href="/annotation" class="nav-link active">🏷️ 数据标注</a>
+                <a href="/training" class="nav-link">🎯 模型训练</a>
+                <a href="/evaluation" class="nav-link">📊 模型评估</a>
+            </div>
+        </div>
+        <div class="header-badge">
+            <span class="badge">YOLO11</span>
+            <span class="badge">QWEN-VL</span>
+            <span class="badge">AI双模型</span>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="main-grid">
+        <div class="left-panel">
+            <div class="card">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                    数据集管理
+                </div>
+                <div class="card-body">
+                    <div class="btn-group" style="margin-bottom:12px;">
+                        <button class="btn btn-primary btn-sm" onclick="showCreateDatasetModal()">+ 新建数据集</button>
+                        <button class="btn btn-secondary btn-sm" onclick="showImportModal()" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;">📥 导入数据集</button>
+                    </div>
+                    <div id="datasetList" class="dataset-list">
+                        <div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:13px;">暂无数据集</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="datasetDetailCard" style="display:none;">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <span id="currentDatasetName">数据集</span>
+                </div>
+                <div class="card-body">
+                    <div class="upload-zone" id="imageUploadZone">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <p>拖拽图片或 <strong style="color:var(--primary)">点击上传</strong></p>
+                        <input type="file" id="imageFileInput" accept="image/*" multiple>
+                    </div>
+                    <div id="imageList" class="image-list" style="margin-top:10px;"></div>
+                    <div style="margin-top:12px;">
+                        <div class="form-label">类别管理</div>
+                        <div id="classesEditor" class="classes-editor"></div>
+                        <div class="add-class-row">
+                            <input type="text" id="newClassName" placeholder="新类别名称" maxlength="30">
+                            <button class="btn btn-primary btn-sm" onclick="addClass()">添加</button>
+                        </div>
+                    </div>
+                    <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
+                        <button class="btn btn-primary btn-block btn-sm" onclick="autoAnnotate()" id="autoAnnotateBtn">
+                            自动标注
+                        </button>
+                        <div class="btn-group">
+                            <button class="btn btn-secondary btn-sm" onclick="showSplitModal()" style="flex:1;">拆分数据集</button>
+                            <button class="btn btn-secondary btn-sm" onclick="showExportModal()" style="flex:1;">导出数据集</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="canvas-area">
+                <div class="canvas-container" id="canvasContainer">
+                    <div class="canvas-toolbar">
+                        <button class="btn active" id="drawRectBtn" onclick="setTool('draw_rect')" title="绘制矩形标注框">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                            矩形
+                        </button>
+                        <button class="btn" id="drawPolygonBtn" onclick="setTool('draw_polygon')" title="绘制多边形标注">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+                            多边形
+                        </button>
+                        <button class="btn" id="editBtn" onclick="setTool('edit')" title="编辑已有标注">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            编辑
+                        </button>
+                        <div class="separator"></div>
+                        <button class="btn" id="panBtn" onclick="setTool('pan')" title="平移画布">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
+                            平移
+                        </button>
+                        <div class="separator"></div>
+                        <button class="btn" onclick="zoomIn()" title="放大">放大+</button>
+                        <button class="btn" onclick="zoomOut()" title="缩小">缩小-</button>
+                        <button class="btn" onclick="zoomFit()" title="适应窗口">适应</button>
+                        <span class="zoom-info" id="zoomInfo">100%</span>
+                        <span class="hint-text" id="toolHint">拖拽绘制矩形</span>
+                        <div class="separator"></div>
+                        <select class="class-select" id="classSelect" title="选择标注类别">
+                            <option value="">选择类别</option>
+                        </select>
+                        <div class="separator"></div>
+                        <div class="nav-image">
+                            <button class="btn" onclick="prevImage()" title="上一张">上一张</button>
+                            <span id="imageNavInfo">0/0</span>
+                            <button class="btn" onclick="nextImage()" title="下一张">下一张</button>
+                        </div>
+                    </div>
+                    <div class="canvas-wrapper" id="canvasWrapper">
+                        <canvas id="mainCanvas"></canvas>
+                        <div class="empty-canvas" id="emptyCanvas">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            <p>请选择数据集并打开图片</p>
+                            <p class="hint">在左侧面板选择或创建数据集，然后上传图片开始标注</p>
+                        </div>
+                    </div>
+                    <div class="canvas-status">
+                        <span id="cursorPos">X: 0, Y: 0</span>
+                        <span id="shapeCount" style="color:#8b5cf6;"></span>
+                        <span id="imageSize">-</span>
+                        <span id="annotationCount">标注: 0</span>
+                    </div>
+                </div>
+
+                <div class="annotation-panel">
+                    <div class="card-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                        标注列表
+                    </div>
+                    <div class="annotation-list" id="annotationList">
+                        <div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:12px;">暂无标注</div>
+                    </div>
+                    <div class="annotation-panel-footer">
+                        <button class="btn btn-primary" onclick="saveAnnotations()" id="saveBtn" disabled>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/></svg>
+                            保存
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="clearAnnotations()" id="clearBtn" disabled>清空</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="importModal">
+    <div class="modal">
+        <h3>📥 导入数据集</h3>
+        <div style="padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;color:#166534;margin-bottom:12px;">
+            <strong>支持格式：</strong><br>
+            • YOLO格式文件夹（含 images/ 和 labels/ 子目录）<br>
+            • 纯图片文件夹（自动创建空标注文件）
+        </div>
+        <div class="form-group"><label class="form-label">数据集名称</label><input type="text" class="form-input" id="importDatasetName" placeholder="输入名称" maxlength="50"></div>
+        <div class="form-group"><label class="form-label">源文件夹路径</label><input type="text" class="form-input" id="importSourceDir" placeholder="例如：G:\datasets\crack-seg" maxlength="500"></div>
+        <div class="form-group"><label class="form-label">描述（可选）</label><input type="text" class="form-input" id="importDesc" placeholder="可选描述" maxlength="200"></div>
+        <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('importModal')">取消</button><button class="btn btn-primary" onclick="doImportDataset()">导入</button></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="createDatasetModal">
+    <div class="modal">
+        <h3>新建数据集</h3>
+        <div class="form-group"><label class="form-label">数据集名称</label><input type="text" class="form-input" id="newDatasetName" placeholder="请输入数据集名称" maxlength="50"></div>
+        <div class="form-group"><label class="form-label">描述</label><input type="text" class="form-input" id="newDatasetDesc" placeholder="可选描述" maxlength="200"></div>
+        <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('createDatasetModal')">取消</button><button class="btn btn-primary" onclick="createDataset()">创建</button></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="splitModal">
+    <div class="modal">
+        <h3>拆分数据集</h3>
+        <div class="slider-group"><div class="slider-header"><span class="form-label">训练集比例</span><span class="slider-value" id="trainRatioValue">0.7</span></div><input type="range" id="trainRatio" min="0.1" max="0.9" step="0.05" value="0.7" oninput="updateSplitRatios()"></div>
+        <div class="slider-group"><div class="slider-header"><span class="form-label">验证集比例</span><span class="slider-value" id="valRatioValue">0.2</span></div><input type="range" id="valRatio" min="0.05" max="0.5" step="0.05" value="0.2" oninput="updateSplitRatios()"></div>
+        <div class="form-group"><label class="form-label">测试集比例</label><input type="text" class="form-input" id="testRatioDisplay" value="0.1" readonly style="background:#f8fafc;"></div>
+        <div class="form-group"><label class="form-label">随机种子</label><input type="number" class="form-input" id="splitSeed" value="42" min="0"></div>
+        <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('splitModal')">取消</button><button class="btn btn-primary" onclick="splitDataset()">拆分</button></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="exportModal">
+    <div class="modal">
+        <h3>导出数据集</h3>
+        <div class="form-group"><label class="form-label">导出格式</label><select class="form-select" id="exportFormat">
+            <option value="yolo">YOLO格式 (.txt)</option><option value="coco">COCO格式 (.json)</option><option value="voc">VOC格式 (.xml)</option><option value="labelme">LabelMe格式 (.json)</option>
+        </select></div>
+        <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('exportModal')">取消</button><button class="btn btn-primary" onclick="exportDataset()">导出</button></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="autoAnnotateModal">
+    <div class="modal">
+        <h3>自动标注</h3>
+        <div style="padding:10px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#a16207;margin-bottom:12px;">将使用YOLO11模型对所有未标注图片进行自动检测并生成标注框</div>
+        <div class="slider-group"><div class="slider-header"><span class="form-label">置信度阈值</span><span class="slider-value" id="autoConfValue">0.25</span></div><input type="range" id="autoConf" min="0.05" max="0.95" step="0.05" value="0.25" oninput="document.getElementById('autoConfValue').textContent=this.value"></div>
+        <div class="slider-group"><div class="slider-header"><span class="form-label">IOU阈值</span><span class="slider-value" id="autoIouValue">0.45</span></div><input type="range" id="autoIou" min="0.1" max="0.9" step="0.05" value="0.45" oninput="document.getElementById('autoIouValue').textContent=this.value"></div>
+        <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('autoAnnotateModal')">取消</button><button class="btn btn-primary" onclick="doAutoAnnotate()">开始标注</button></div>
+    </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-box"><div class="loading-spinner"></div><div class="loading-text" id="loadingText">处理中...</div><div class="loading-subtext" id="loadingSubtext"></div></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const CLASS_COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#f43f5e','#fb923c','#fbbf24','#4ade80','#22d3ee','#60a5fa','#a78bfa','#f472b6'];
+
+let datasets=[], currentDataset=null, images=[], currentImageIndex=-1, currentAnnotations=[], classes=['crack'];
+let currentTool='draw_rect', zoom=1, panX=0, panY=0, imgObj=null, canvas, ctx, unsavedChanges=false;
+
+// Drawing state
+let isDrawing=false, drawStart=null, drawCurrent=null;
+// Polygon drawing
+let polygonPoints=[], isDrawingPolygon=false;
+// Edit state
+let selectedAnnotation=-1, isDraggingVertex=false, dragVertexIndex=-1, isDraggingAnnotation=false;
+// Pan state
+let isPanning=false, panStart=null, spacePressed=false;
+// Context menu
+let contextMenu=null;
+
+window.addEventListener('DOMContentLoaded',()=>{
+    canvas=document.getElementById('mainCanvas');
+    ctx=canvas.getContext('2d');
+    setupCanvasEvents();
+    setupImageUpload();
+    loadDatasets();
+    document.getElementById('newClassName').addEventListener('keydown',e=>{if(e.key==='Enter')addClass();});
+    document.addEventListener('keydown',handleKeyDown);
+    document.addEventListener('keyup',handleKeyUp);
+    document.addEventListener('click',e=>{ const menu=document.getElementById('contextMenu'); if(menu&&!menu.contains(e.target))menu.remove(); });
+    updateToolUI();
+});
+
+function handleKeyDown(e){
+    if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA')return;
+    if(e.code==='Space'&&!e.repeat){e.preventDefault();spacePressed=true;document.getElementById('canvasWrapper').classList.add('panning');}
+    if(e.code==='ArrowLeft')prevImage();
+    if(e.code==='ArrowRight')nextImage();
+    if(e.ctrlKey&&e.code==='KeyS'){e.preventDefault();saveAnnotations();}
+    if(e.code==='Escape'){cancelDrawing();}
+    if(e.code==='Enter'&&isDrawingPolygon&&polygonPoints.length>=3){e.preventDefault();finishPolygon();}
+    if(e.code==='Backspace'&&isDrawingPolygon&&polygonPoints.length>0){e.preventDefault();polygonPoints.pop();renderCanvas();showToast(`已回退，剩余 ${polygonPoints.length} 个顶点`,'info');if(polygonPoints.length===0){isDrawingPolygon=false;document.getElementById('shapeCount').textContent='';}}
+    if((e.code==='Delete'||e.code==='Backspace')&&selectedAnnotation>=0){e.preventDefault();deleteAnnotation(selectedAnnotation);selectedAnnotation=-1;renderAnnotationList();renderCanvas();}
+    if(e.code==='KeyR')setTool('draw_rect');
+    if(e.code==='KeyP')setTool('draw_polygon');
+    if(e.code==='KeyE')setTool('edit');
+    if(e.code==='KeyH')setTool('pan');
+}
+function handleKeyUp(e){if(e.code==='Space'){spacePressed=false;if(currentTool!=='pan')document.getElementById('canvasWrapper').classList.remove('panning');}}
+
+function showToast(m,t){const el=document.getElementById('toast');el.textContent=m;el.className=`toast toast-${t||'info'}`;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3000);}
+function showLoading(t,s){document.getElementById('loadingText').textContent=t||'处理中...';document.getElementById('loadingSubtext').textContent=s||'';document.getElementById('loadingOverlay').classList.add('active');}
+function hideLoading(){document.getElementById('loadingOverlay').classList.remove('active');}
+function showCreateDatasetModal(){document.getElementById('newDatasetName').value='';document.getElementById('newDatasetDesc').value='';document.getElementById('createDatasetModal').classList.add('active');document.getElementById('newDatasetName').focus();}
+function showImportModal(){document.getElementById('importDatasetName').value='';document.getElementById('importSourceDir').value='';document.getElementById('importDesc').value='';document.getElementById('importModal').classList.add('active');document.getElementById('importDatasetName').focus();}
+async function doImportDataset(){const name=document.getElementById('importDatasetName').value.trim();const src=document.getElementById('importSourceDir').value.trim();const desc=document.getElementById('importDesc').value.trim();if(!name){showToast('请输入数据集名称','error');return;}if(!src){showToast('请输入源文件夹路径','error');return;}showLoading('正在导入数据集...',src);try{const fd=new FormData();fd.append('name',name);fd.append('source_dir',src);fd.append('description',desc);const res=await fetch('/api/datasets/import',{method:'POST',body:fd});if(!res.ok){const err=await res.json();throw new Error(err.detail||'导入失败');}const data=await res.json();hideLoading();closeModal('importModal');showToast(`导入成功！${data.dataset.image_count}张图片，${data.dataset.annotated_count}张已标注`,'success');await loadDatasets();}catch(e){hideLoading();showToast('导入失败: '+e.message,'error');}}
+function showSplitModal(){if(!currentDataset)return;document.getElementById('trainRatio').value=0.7;document.getElementById('valRatio').value=0.2;updateSplitRatios();document.getElementById('splitModal').classList.add('active');}
+function showExportModal(){if(!currentDataset)return;document.getElementById('exportModal').classList.add('active');}
+function closeModal(id){document.getElementById(id).classList.remove('active');}
+function updateSplitRatios(){const train=parseFloat(document.getElementById('trainRatio').value);const val=parseFloat(document.getElementById('valRatio').value);const test=Math.max(0,Math.round((1-train-val)*100)/100);document.getElementById('trainRatioValue').textContent=train.toFixed(2);document.getElementById('valRatioValue').textContent=val.toFixed(2);document.getElementById('testRatioDisplay').value=test.toFixed(2);}
+
+async function loadDatasets(){
+    try{const res=await fetch('/api/datasets');if(!res.ok)throw new Error('加载失败');const data=await res.json();datasets=data.datasets||data;renderDatasetList();}catch(e){showToast('加载数据集失败: '+e.message,'error');}
+}
+function renderDatasetList(){
+    const el=document.getElementById('datasetList');
+    if(datasets.length===0){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:13px;">暂无数据集</div>';return;}
+    el.innerHTML=datasets.map(ds=>`<div class="dataset-item ${currentDataset&&currentDataset.dataset_id===ds.dataset_id?'active':''}" onclick="selectDataset('${ds.dataset_id}')"><div class="dataset-item-info"><div class="dataset-item-name">${ds.name}</div><div class="dataset-item-desc">${ds.description||'无描述'} · ${ds.image_count||0}张图片 · ${ds.annotated_count||0}已标注</div></div><div class="dataset-item-actions"><button class="btn btn-danger" onclick="event.stopPropagation();deleteDataset('${ds.dataset_id}')" title="删除">删除</button></div></div>`).join('');
+}
+async function createDataset(){
+    const name=document.getElementById('newDatasetName').value.trim();if(!name){showToast('请输入数据集名称','error');return;}
+    try{const fd=new FormData();fd.append('name',name);fd.append('description',document.getElementById('newDatasetDesc').value.trim());const res=await fetch('/api/datasets',{method:'POST',body:fd});if(!res.ok)throw new Error((await res.json()).detail||'创建失败');closeModal('createDatasetModal');showToast('数据集创建成功','success');await loadDatasets();}catch(e){showToast('创建失败: '+e.message,'error');}
+}
+async function deleteDataset(id){if(!confirm('确定要删除此数据集吗？'))return;try{await fetch(`/api/datasets/${id}`,{method:'DELETE'});if(currentDataset&&currentDataset.dataset_id===id){currentDataset=null;images=[];currentImageIndex=-1;currentAnnotations=[];imgObj=null;document.getElementById('datasetDetailCard').style.display='none';document.getElementById('emptyCanvas').style.display='flex';renderAnnotationList();renderCanvas();}showToast('数据集已删除','success');await loadDatasets();}catch(e){showToast('删除失败: '+e.message,'error');}}
+async function selectDataset(id){
+    currentDataset=datasets.find(d=>d.dataset_id===id);if(!currentDataset)return;renderDatasetList();
+    document.getElementById('datasetDetailCard').style.display='block';document.getElementById('currentDatasetName').textContent=currentDataset.name;
+    if(currentDataset.classes){if(Array.isArray(currentDataset.classes)){classes=currentDataset.classes.length>0?currentDataset.classes:['crack'];}else{classes=Object.values(currentDataset.classes);if(classes.length===0)classes=['crack'];}}else{classes=['crack'];}
+    renderClassesEditor();updateClassSelect();await loadImages();
+}
+async function loadImages(){
+    if(!currentDataset)return;
+    try{const res=await fetch(`/api/datasets/${currentDataset.dataset_id}/images?page=1&page_size=9999`);if(!res.ok)throw new Error('加载失败');const data=await res.json();images=data.images||data||[];sortImages();renderImageList();if(images.length>0&&currentImageIndex===-1){currentImageIndex=0;await loadImage(currentImageIndex);}else if(images.length===0){currentImageIndex=-1;imgObj=null;currentAnnotations=[];document.getElementById('emptyCanvas').style.display='flex';renderAnnotationList();renderCanvas();}updateImageNav();}catch(e){showToast('图片加载失败: '+e.message,'error');}
+}
+function sortImages(){images.sort((a,b)=>{if(a.has_annotation===b.has_annotation)return 0;return a.has_annotation?-1:1;});}
+function renderImageList(){
+    const el=document.getElementById('imageList');
+    if(images.length===0){el.innerHTML='<div style="text-align:center;padding:12px;color:var(--text-secondary);font-size:12px;">暂无图片</div>';return;}
+    el.innerHTML=images.map((img,i)=>{const status=img.has_annotation?`<span style="color:#22c55e;font-size:10px;">已标注</span>`:`<span style="color:#f97316;font-size:10px;">新导入</span>`;return`<div class="image-item ${i===currentImageIndex?'active':''}" onclick="loadImage(${i})"><span class="image-item-name">${status} ${img.filename||img.name||('图片'+(i+1))}</span><span class="image-item-delete" onclick="event.stopPropagation();deleteImage(${i})" title="删除">删除</span></div>`;}).join('');
+}
+async function loadImage(index){
+    if(index<0||index>=images.length)return;
+    if(unsavedChanges&&!confirm('当前标注未保存，是否放弃更改？'))return;
+    currentImageIndex=index;unsavedChanges=false;selectedAnnotation=-1;cancelDrawing();
+    renderImageList();updateImageNav();
+    const img=images[index];const filename=img.filename||img.name;
+    // Load YOLO annotations
+    try{const res=await fetch(`/api/datasets/${currentDataset.dataset_id}/images/${filename.split('/').map(s=>encodeURIComponent(s)).join('/')}/annotations`);if(res.ok){const data=await res.json();currentAnnotations=(data.annotations||[]).map(a=>({class_name:a.class_name||a.class||'crack',shape_type:'rectangle',cx:a.cx,cy:a.cy,w:a.w,h:a.h}));}else{currentAnnotations=[];}}catch(e){currentAnnotations=[];}
+    // Also try to load polygon shapes from sidecar file (silently skip if not found)
+    try{const base=fnameNoExt(filename);const sf=base+'_shapes.json';const sr=await fetch('/api/datasets/'+currentDataset.dataset_id+'/images/'+encodeURIComponent(sf)+'/annotations');if(sr.ok){const sd=await sr.json();if(sd._shapes){currentAnnotations=sd._shapes.map(s=>{if(s.shape_type==='polygon'&&s.points){return{class_name:s.class_name,shape_type:'polygon',points:s.points};}return{class_name:s.class_name,shape_type:'rectangle',cx:s.cx,cy:s.cy,w:s.w,h:s.h};});}}}catch(e){}
+    renderAnnotationList();document.getElementById('emptyCanvas').style.display='none';
+    imgObj=new Image();imgObj.onload=()=>{document.getElementById('imageSize').textContent=`${imgObj.naturalWidth} × ${imgObj.naturalHeight}`;zoomFit();};imgObj.onerror=()=>{showToast('图片加载失败','error');document.getElementById('emptyCanvas').style.display='flex';};imgObj.src=`/datasets/${currentDataset.dataset_id}/images/${filename.split('/').map(s=>encodeURIComponent(s)).join('/')}`;
+    document.getElementById('saveBtn').disabled=false;document.getElementById('clearBtn').disabled=false;
+}
+async function deleteImage(index){if(!confirm('确定要删除此图片吗？'))return;const img=images[index];const filename=img.filename||img.name;try{await fetch(`/api/datasets/${currentDataset.dataset_id}/images/${filename.split('/').map(s=>encodeURIComponent(s)).join('/')}`,{method:'DELETE'});showToast('图片已删除','success');await loadImages();}catch(e){showToast('删除失败: '+e.message,'error');}}
+
+function setupImageUpload(){
+    const zone=document.getElementById('imageUploadZone');const input=document.getElementById('imageFileInput');
+    zone.addEventListener('click',()=>input.click());
+    zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('dragover');});
+    zone.addEventListener('dragleave',()=>zone.classList.remove('dragover'));
+    zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('dragover');uploadImages(e.dataTransfer.files);});
+    input.addEventListener('change',e=>{if(e.target.files.length>0)uploadImages(e.target.files);input.value='';});
+}
+async function uploadImages(files){if(!currentDataset){showToast('请先选择数据集','error');return;}showLoading('正在上传图片...',`共${files.length}张`);const fd=new FormData();for(const f of files)fd.append('files',f);try{const res=await fetch(`/api/datasets/${currentDataset.dataset_id}/images`,{method:'POST',body:fd});if(!res.ok)throw new Error((await res.json()).detail||'上传失败');hideLoading();showToast(`成功上传${files.length}张图片`,'success');await loadImages();}catch(e){hideLoading();showToast('上传失败: '+e.message,'error');}}
+function renderClassesEditor(){const el=document.getElementById('classesEditor');el.innerHTML=classes.map((c,i)=>`<div class="class-tag"><span class="class-tag-color" style="background:${CLASS_COLORS[i%CLASS_COLORS.length]}"></span>${c}<span class="class-tag-remove" onclick="removeClass(${i})" title="删除">删除</span></div>`).join('');updateClassSelect();}
+function addClass(){const input=document.getElementById('newClassName');const name=input.value.trim();if(!name)return;if(classes.includes(name)){showToast('类别已存在','error');return;}classes.push(name);input.value='';renderClassesEditor();saveClasses();}
+function removeClass(index){if(classes.length<=1){showToast('至少保留一个类别','error');return;}classes.splice(index,1);renderClassesEditor();saveClasses();}
+async function saveClasses(){if(!currentDataset)return;try{const classesDict={};classes.forEach((name,idx)=>{classesDict[idx]=name;});await fetch(`/api/datasets/${currentDataset.dataset_id}/classes`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({classes:classesDict})});}catch(e){}}
+function updateClassSelect(){const sel=document.getElementById('classSelect');const current=sel.value;sel.innerHTML='<option value="">选择类别</option>'+classes.map(c=>`<option value="${c}" ${c===current?'selected':''}>${c}</option>`).join('');if(!current&&classes.length>0)sel.value=classes[0];}
+
+// ==================== TOOL MANAGEMENT ====================
+function setTool(tool){
+    currentTool=tool;selectedAnnotation=-1;cancelDrawing();
+    document.getElementById('canvasWrapper').classList.remove('panning','polygon-drawing');
+    updateToolUI();
+    const hints={'draw_rect':'拖拽绘制矩形标注框','draw_polygon':'点击添加顶点 | Backspace回退 | 双击/Enter闭合','edit':'拖拽顶点 | 点击边线加点 | Shift+点击顶点删点 | 拖拽主体移动','pan':'拖拽平移画布，滚轮缩放'};
+    document.getElementById('toolHint').textContent=hints[tool]||'';
+}
+function updateToolUI(){
+    ['drawRectBtn','drawPolygonBtn','editBtn','panBtn'].forEach(id=>{const b=document.getElementById(id);if(!b)return;b.classList.remove('active','active-polygon','active-edit');});
+    if(currentTool==='draw_rect')document.getElementById('drawRectBtn').classList.add('active');
+    if(currentTool==='draw_polygon')document.getElementById('drawPolygonBtn').classList.add('active-polygon');
+    if(currentTool==='edit')document.getElementById('editBtn').classList.add('active-edit');
+    if(currentTool==='pan')document.getElementById('panBtn').classList.add('active');
+}
+function cancelDrawing(){
+    isDrawing=false;drawStart=null;drawCurrent=null;
+    isDrawingPolygon=false;polygonPoints=[];
+    document.getElementById('shapeCount').textContent='';
+    renderCanvas();
+}
+
+// ==================== CANVAS EVENTS ====================
+function setupCanvasEvents(){
+    const wrapper=document.getElementById('canvasWrapper');
+    wrapper.addEventListener('mousedown',handleMouseDown);
+    wrapper.addEventListener('mousemove',handleMouseMove);
+    wrapper.addEventListener('mouseup',handleMouseUp);
+    wrapper.addEventListener('dblclick',handleDoubleClick);
+    wrapper.addEventListener('contextmenu',handleContextMenu);
+    wrapper.addEventListener('wheel',e=>{e.preventDefault();const delta=e.deltaY>0?0.9:1.1;const rect=wrapper.getBoundingClientRect();const mx=e.clientX-rect.left;const my=e.clientY-rect.top;const newZoom=Math.max(0.1,Math.min(20,zoom*delta));panX=mx-(mx-panX)*(newZoom/zoom);panY=my-(my-panY)*(newZoom/zoom);zoom=newZoom;document.getElementById('zoomInfo').textContent=Math.round(zoom*100)+'%';renderCanvas();},{passive:false});
+    wrapper.addEventListener('mouseleave',()=>{isPanning=false;});
+    window.addEventListener('resize',()=>{if(imgObj)renderCanvas();});
+}
+
+function handleMouseDown(e){
+    if(e.button===1||spacePressed){isPanning=true;panStart={x:e.clientX-panX,y:e.clientY-panY};document.getElementById('canvasWrapper').style.cursor='grabbing';return;}
+    if(currentTool==='pan'){isPanning=true;panStart={x:e.clientX-panX,y:e.clientY-panY};document.getElementById('canvasWrapper').style.cursor='grabbing';return;}
+
+    const pos=getCanvasPos(e);
+    if(currentTool==='draw_rect'){
+        if(!imgObj)return;const sel=document.getElementById('classSelect').value;if(!sel){showToast('请先选择标注类别','error');return;}
+        isDrawing=true;drawStart=pos;drawCurrent=pos;
+    }
+    if(currentTool==='draw_polygon'){
+        if(!imgObj)return;const sel=document.getElementById('classSelect').value;if(!sel){showToast('请先选择标注类别','error');return;}
+        if(!isDrawingPolygon){isDrawingPolygon=true;polygonPoints=[pos];return;}
+        // Subsequent clicks: add vertex
+        polygonPoints.push(pos);renderCanvas();
+    }
+    if(currentTool==='edit'){
+        if(!imgObj||currentAnnotations.length===0)return;
+        // Check if clicking on a vertex first
+        const hit=hitTestVertex(pos);
+        if(hit.annIdx>=0&&hit.vtxIdx>=0){
+            // Shift+click on vertex = delete it (for polygons with >3 vertices)
+            if(e.shiftKey){
+                const ann=currentAnnotations[hit.annIdx];
+                if(ann.shape_type==='polygon'&&ann.points&&ann.points.length>3){
+                    ann.points.splice(hit.vtxIdx,1);unsavedChanges=true;selectedAnnotation=hit.annIdx;renderAnnotationList();renderCanvas();
+                    showToast(`已删除顶点（剩余${ann.points.length}个）`,'info');return;
+                }
+            }
+            isDraggingVertex=true;selectedAnnotation=hit.annIdx;dragVertexIndex=hit.vtxIdx;renderAnnotationList();renderCanvas();return;
+        }
+        // Check if clicking on a polygon edge (near midpoint) to insert vertex
+        const edgeHit=hitTestEdge(pos);
+        if(edgeHit.annIdx>=0){
+            const ann=currentAnnotations[edgeHit.annIdx];
+            ann.points.splice(edgeHit.edgeIdx+1,0,[pos.imgX,pos.imgY]);
+            unsavedChanges=true;selectedAnnotation=edgeHit.annIdx;renderAnnotationList();renderCanvas();
+            showToast('已添加顶点','success');return;
+        }
+        // Check if clicking on an annotation
+        const annIdx=hitTestAnnotation(pos);
+        if(annIdx>=0){selectedAnnotation=annIdx;isDraggingAnnotation=true;dragStart=pos;renderAnnotationList();renderCanvas();return;}
+        // Deselect
+        selectedAnnotation=-1;renderAnnotationList();renderCanvas();
+    }
+}
+
+function handleMouseMove(e){
+    const pos=getCanvasPos(e);
+    document.getElementById('cursorPos').textContent=`X: ${Math.round(pos.imgX)}, Y: ${Math.round(pos.imgY)}`;
+    if(isPanning){panX=e.clientX-panStart.x;panY=e.clientY-panStart.y;renderCanvas();return;}
+    if(isDrawing){drawCurrent=pos;renderCanvas();}
+    if(isDraggingVertex&&selectedAnnotation>=0){
+        const ann=currentAnnotations[selectedAnnotation];
+        if(ann.shape_type==='polygon'&&ann.points){
+            ann.points[dragVertexIndex]=[pos.imgX,pos.imgY];unsavedChanges=true;renderCanvas();
+        }
+    }
+    if(isDraggingAnnotation&&selectedAnnotation>=0){
+        const ann=currentAnnotations[selectedAnnotation];
+        const dx=pos.imgX-dragStart.imgX;const dy=pos.imgY-dragStart.imgY;
+        if(ann.shape_type==='rectangle'){ann.cx+=dx/imgObj.naturalWidth;ann.cy+=dy/imgObj.naturalHeight;}
+        if(ann.shape_type==='polygon'&&ann.points){for(let p of ann.points){p[0]+=dx;p[1]+=dy;}}
+        dragStart=pos;unsavedChanges=true;renderCanvas();
+    }
+}
+
+function handleMouseUp(e){
+    if(isPanning){isPanning=false;updateCursor();return;}
+    if(isDraggingVertex){isDraggingVertex=false;dragVertexIndex=-1;renderAnnotationList();return;}
+    if(isDraggingAnnotation){isDraggingAnnotation=false;return;}
+    if(isDrawing){
+        isDrawing=false;
+        if(drawStart&&drawCurrent&&imgObj){
+            const x1=Math.min(drawStart.imgX,drawCurrent.imgX);const y1=Math.min(drawStart.imgY,drawCurrent.imgY);
+            const x2=Math.max(drawStart.imgX,drawCurrent.imgX);const y2=Math.max(drawStart.imgY,drawCurrent.imgY);
+            if((x2-x1)>5&&(y2-y1)>5){
+                const cx=((x1+x2)/2)/imgObj.naturalWidth;const cy=((y1+y2)/2)/imgObj.naturalHeight;
+                const nw=(x2-x1)/imgObj.naturalWidth;const nh=(y2-y1)/imgObj.naturalHeight;
+                currentAnnotations.push({class_name:document.getElementById('classSelect').value,shape_type:'rectangle',cx,cy,w:nw,h:nh});
+                unsavedChanges=true;renderAnnotationList();document.getElementById('annotationCount').textContent=`标注: ${currentAnnotations.length}`;
+            }
+        }
+        drawStart=null;drawCurrent=null;renderCanvas();
+    }
+}
+
+function handleDoubleClick(e){
+    if(currentTool==='draw_polygon'&&isDrawingPolygon&&polygonPoints.length>=3){
+        finishPolygon();
+        e.preventDefault();e.stopPropagation();
+    }
+}
+
+function handleContextMenu(e){
+    e.preventDefault();
+    if(currentTool==='draw_polygon'&&isDrawingPolygon&&polygonPoints.length>=3){finishPolygon();return;}
+    if(currentTool==='edit'){const pos=getCanvasPos(e);const annIdx=hitTestAnnotation(pos);if(annIdx>=0){selectedAnnotation=annIdx;showContextMenu(e.clientX,e.clientY,annIdx);}}
+}
+
+function showContextMenu(x,y,annIdx){
+    const old=document.getElementById('contextMenu');if(old)old.remove();
+    const menu=document.createElement('div');menu.id='contextMenu';menu.className='edit-menu';menu.style.left=x+'px';menu.style.top=y+'px';menu.style.display='flex';
+    const ann=currentAnnotations[annIdx];
+    const isPolygon=ann.shape_type==='polygon';
+    const vCount=isPolygon&&ann.points?ann.points.length:0;
+    menu.innerHTML=`
+        <button onclick="convertToPolygon(${annIdx})">${isPolygon?'转为外接矩形':'转为多边形'}</button>
+        <button onclick="addVertexNear(${annIdx})" ${!isPolygon?'style="display:none"':''}>最长边中点添加顶点</button>
+        ${isPolygon&&vCount>3?`<button onclick="deleteNearestVertex(${annIdx},${x},${y})" style="color:#f97316">删除最近顶点(${vCount}个)</button>`:''}
+        <button onclick="deleteAnnotation(${annIdx})" style="color:#ef4444">删除标注</button>
+    `;
+    document.body.appendChild(menu);
+}
+
+function deleteNearestVertex(annIdx,mx,my){
+    const ann=currentAnnotations[annIdx];
+    if(!ann.points||ann.points.length<=3)return;
+    const wrapper=document.getElementById('canvasWrapper');
+    const rect=wrapper.getBoundingClientRect();
+    const imgX=(mx-rect.left-panX)/zoom,imgY=(my-rect.top-panY)/zoom;
+    let minIdx=0,minDist=Infinity;
+    ann.points.forEach((p,i)=>{const d=Math.hypot(imgX-p[0],imgY-p[1]);if(d<minDist){minDist=d;minIdx=i;}});
+    ann.points.splice(minIdx,1);unsavedChanges=true;selectedAnnotation=annIdx;renderAnnotationList();renderCanvas();
+    showToast(`已删除顶点（剩余${ann.points.length}个）`,'info');
+    const menu=document.getElementById('contextMenu');if(menu)menu.remove();
+}
+
+function finishPolygon(){
+    if(polygonPoints.length<3)return;
+    const sel=document.getElementById('classSelect').value;
+    const points=polygonPoints.map(p=>[p.imgX,p.imgY]);
+    currentAnnotations.push({class_name:sel,shape_type:'polygon',points});
+    unsavedChanges=true;isDrawingPolygon=false;polygonPoints=[];
+    document.getElementById('shapeCount').textContent='';
+    renderAnnotationList();renderCanvas();
+    document.getElementById('annotationCount').textContent=`标注: ${currentAnnotations.length}`;
+}
+
+function convertToPolygon(idx){
+    const ann=currentAnnotations[idx];if(!imgObj||!imgObj.naturalWidth)return;
+    if(ann.shape_type==='rectangle'){
+        const x1=(ann.cx-ann.w/2)*imgObj.naturalWidth;const y1=(ann.cy-ann.h/2)*imgObj.naturalHeight;
+        const x2=(ann.cx+ann.w/2)*imgObj.naturalWidth;const y2=(ann.cy+ann.h/2)*imgObj.naturalHeight;
+        ann.shape_type='polygon';ann.points=[[x1,y1],[x2,y1],[x2,y2],[x1,y2]];
+        delete ann.cx;delete ann.cy;delete ann.w;delete ann.h;
+    }else{
+        const xs=ann.points.map(p=>p[0]);const ys=ann.points.map(p=>p[1]);
+        const minX=Math.min(...xs),minY=Math.min(...ys),maxX=Math.max(...xs),maxY=Math.max(...ys);
+        ann.shape_type='rectangle';ann.cx=((minX+maxX)/2)/imgObj.naturalWidth;ann.cy=((minY+maxY)/2)/imgObj.naturalHeight;
+        ann.w=(maxX-minX)/imgObj.naturalWidth;ann.h=(maxY-minY)/imgObj.naturalHeight;delete ann.points;
+    }
+    unsavedChanges=true;renderAnnotationList();renderCanvas();
+    const menu=document.getElementById('contextMenu');if(menu)menu.remove();
+}
+
+function addVertexNear(idx){
+    const ann=currentAnnotations[idx];
+    if(ann.shape_type!=='polygon'||!ann.points||ann.points.length<2)return;
+    // Find longest edge and add vertex at midpoint
+    let maxDist=0,maxI=0;
+    for(let i=0;i<ann.points.length;i++){const j=(i+1)%ann.points.length;const d=Math.hypot(ann.points[i][0]-ann.points[j][0],ann.points[i][1]-ann.points[j][1]);if(d>maxDist){maxDist=d;maxI=j;}}
+    const prev=ann.points[(maxI-1+ann.points.length)%ann.points.length];
+    const curr=ann.points[maxI];
+    ann.points.splice(maxI,0,[(prev[0]+curr[0])/2,(prev[1]+curr[1])/2]);
+    unsavedChanges=true;renderAnnotationList();renderCanvas();
+    const menu=document.getElementById('contextMenu');if(menu)menu.remove();
+}
+
+function getCanvasPos(e){
+    const wrapper=document.getElementById('canvasWrapper');const rect=wrapper.getBoundingClientRect();
+    const mx=e.clientX-rect.left;const my=e.clientY-rect.top;
+    return{canvasX:mx,canvasY:my,imgX:(mx-panX)/zoom,imgY:(my-panY)/zoom};
+}
+
+function hitTestAnnotation(pos){
+    const HIT_RADIUS=8/zoom;
+    for(let i=currentAnnotations.length-1;i>=0;i--){
+        const ann=currentAnnotations[i];
+        if(ann.shape_type==='rectangle'&&imgObj){
+            const px=(ann.cx-ann.w/2)*imgObj.naturalWidth,py=(ann.cy-ann.h/2)*imgObj.naturalHeight;
+            const pw=ann.w*imgObj.naturalWidth,ph=ann.h*imgObj.naturalHeight;
+            if(pos.imgX>=px-HIT_RADIUS&&pos.imgX<=px+pw+HIT_RADIUS&&pos.imgY>=py-HIT_RADIUS&&pos.imgY<=py+ph+HIT_RADIUS)return i;
+        }
+        if(ann.shape_type==='polygon'&&ann.points){
+            const xs=ann.points.map(p=>p[0]),ys=ann.points.map(p=>p[1]);
+            const minX=Math.min(...xs)-HIT_RADIUS,minY=Math.min(...ys)-HIT_RADIUS;
+            const maxX=Math.max(...xs)+HIT_RADIUS,maxY=Math.max(...ys)+HIT_RADIUS;
+            if(pos.imgX>=minX&&pos.imgX<=maxX&&pos.imgY>=minY&&pos.imgY<=maxY)return i;
+        }
+    }
+    return -1;
+}
+
+function hitTestEdge(pos){
+    const EDGE_RADIUS=10/zoom;
+    for(let i=currentAnnotations.length-1;i>=0;i--){
+        const ann=currentAnnotations[i];
+        if(ann.shape_type!=='polygon'||!ann.points||ann.points.length<2)continue;
+        for(let j=0;j<ann.points.length;j++){
+            const a=ann.points[j],b=ann.points[(j+1)%ann.points.length];
+            const dx=b[0]-a[0],dy=b[1]-a[1],len2=dx*dx+dy*dy;if(len2<1)continue;
+            let t=((pos.imgX-a[0])*dx+(pos.imgY-a[1])*dy)/len2;t=Math.max(0,Math.min(1,t));
+            const px=a[0]+t*dx,py=a[1]+t*dy;
+            if(Math.hypot(pos.imgX-px,pos.imgY-py)<EDGE_RADIUS)return{annIdx:i,edgeIdx:j};
+        }
+    }
+    return{annIdx:-1,edgeIdx:-1};
+}
+
+function hitTestVertex(pos){
+    const VERTEX_RADIUS=6/zoom;
+    for(let i=currentAnnotations.length-1;i>=0;i--){
+        const ann=currentAnnotations[i];
+        if(ann.shape_type==='polygon'&&ann.points){
+            for(let j=0;j<ann.points.length;j++){if(Math.hypot(pos.imgX-ann.points[j][0],pos.imgY-ann.points[j][1])<VERTEX_RADIUS)return{annIdx:i,vtxIdx:j};}
+        }
+        if(ann.shape_type==='rectangle'&&imgObj){
+            const corners=[[(ann.cx-ann.w/2)*imgObj.naturalWidth,(ann.cy-ann.h/2)*imgObj.naturalHeight],[(ann.cx+ann.w/2)*imgObj.naturalWidth,(ann.cy-ann.h/2)*imgObj.naturalHeight],[(ann.cx+ann.w/2)*imgObj.naturalWidth,(ann.cy+ann.h/2)*imgObj.naturalHeight],[(ann.cx-ann.w/2)*imgObj.naturalWidth,(ann.cy+ann.h/2)*imgObj.naturalHeight]];
+            for(let j=0;j<4;j++){if(Math.hypot(pos.imgX-corners[j][0],pos.imgY-corners[j][1])<VERTEX_RADIUS)return{annIdx:i,vtxIdx:j};}
+        }
+    }
+    return{annIdx:-1,vtxIdx:-1};
+}
+
+function updateCursor(){
+    const wrapper=document.getElementById('canvasWrapper');
+    if(currentTool==='pan'||spacePressed){wrapper.style.cursor='grab';return;}
+    if(currentTool==='draw_rect'||currentTool==='draw_polygon'){wrapper.style.cursor='crosshair';return;}
+    if(currentTool==='edit'){wrapper.style.cursor='default';return;}
+    wrapper.style.cursor='default';
+}
+
+// ==================== ZOOM & RENDER ====================
+function zoomIn(){zoom=Math.min(20,zoom*1.2);document.getElementById('zoomInfo').textContent=Math.round(zoom*100)+'%';renderCanvas();}
+function zoomOut(){zoom=Math.max(0.1,zoom/1.2);document.getElementById('zoomInfo').textContent=Math.round(zoom*100)+'%';renderCanvas();}
+function zoomFit(){if(!imgObj)return;const wrapper=document.getElementById('canvasWrapper');const ww=wrapper.clientWidth,wh=wrapper.clientHeight;const iw=imgObj.naturalWidth,ih=imgObj.naturalHeight;zoom=Math.min(ww/iw,wh/ih)*0.9;panX=(ww-iw*zoom)/2;panY=(wh-ih*zoom)/2;document.getElementById('zoomInfo').textContent=Math.round(zoom*100)+'%';renderCanvas();}
+
+function renderCanvas(){
+    const wrapper=document.getElementById('canvasWrapper');const ww=wrapper.clientWidth,wh=wrapper.clientHeight;
+    canvas.width=ww;canvas.height=wh;ctx.clearRect(0,0,ww,wh);ctx.fillStyle='#1a1a2e';ctx.fillRect(0,0,ww,wh);
+    if(!imgObj||!imgObj.complete||imgObj.naturalWidth===0)return;
+    ctx.save();ctx.translate(panX,panY);ctx.scale(zoom,zoom);ctx.drawImage(imgObj,0,0);
+
+    currentAnnotations.forEach((ann,i)=>{
+        const classIdx=classes.indexOf(ann.class_name);const color=CLASS_COLORS[classIdx>=0?classIdx%CLASS_COLORS.length:0];
+        const isSel=i===selectedAnnotation;const lw=(isSel?3:2)/zoom;
+        ctx.strokeStyle=isSel?'#ffffff':color;ctx.lineWidth=lw;ctx.fillStyle=color+'25';
+
+        if(ann.shape_type==='polygon'&&ann.points&&ann.points.length>=3){
+            ctx.beginPath();ctx.moveTo(ann.points[0][0],ann.points[0][1]);
+            for(let j=1;j<ann.points.length;j++)ctx.lineTo(ann.points[j][0],ann.points[j][1]);
+            ctx.closePath();ctx.fill();ctx.stroke();
+            // Draw vertices in edit mode
+            if(currentTool==='edit'||isSel){
+                ann.points.forEach((p,j)=>{ctx.fillStyle=isSel&&dragVertexIndex===j?'#ffffff':color;ctx.beginPath();ctx.arc(p[0],p[1],5/zoom,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ffffff';ctx.lineWidth=1/zoom;ctx.stroke();});
+            }
+            // Label
+            const xs=ann.points.map(p=>p[0]),ys=ann.points.map(p=>p[1]);
+            const minX=Math.min(...xs),minY=Math.min(...ys);
+            drawLabel(minX,minY,ann.class_name,i,color,isSel);
+        }else{
+            // Rectangle
+            const px=(ann.cx-ann.w/2)*imgObj.naturalWidth,py=(ann.cy-ann.h/2)*imgObj.naturalHeight;
+            const pw=ann.w*imgObj.naturalWidth,ph=ann.h*imgObj.naturalHeight;
+            ctx.fillRect(px,py,pw,ph);ctx.strokeRect(px,py,pw,ph);
+            // Corners in edit mode
+            if(currentTool==='edit'||isSel){
+                [[px,py],[px+pw,py],[px+pw,py+ph],[px,py+ph]].forEach(([cx,cy],j)=>{ctx.fillStyle=isSel&&dragVertexIndex===j?'#ffffff':color;ctx.beginPath();ctx.arc(cx,cy,5/zoom,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ffffff';ctx.lineWidth=1/zoom;ctx.stroke();});
+            }
+            drawLabel(px,py,ann.class_name,i,color,isSel);
+        }
+    });
+
+    // Drawing preview
+    if(isDrawing&&drawStart&&drawCurrent){
+        const x1=Math.min(drawStart.imgX,drawCurrent.imgX),y1=Math.min(drawStart.imgY,drawCurrent.imgY);
+        const w=Math.abs(drawCurrent.imgX-drawStart.imgX),h=Math.abs(drawCurrent.imgY-drawStart.imgY);
+        ctx.strokeStyle='#00ff00';ctx.lineWidth=2/zoom;ctx.setLineDash([6/zoom,4/zoom]);ctx.strokeRect(x1,y1,w,h);ctx.setLineDash([]);ctx.fillStyle='rgba(0,255,0,0.15)';ctx.fillRect(x1,y1,w,h);
+    }
+    // Polygon preview
+    if(isDrawingPolygon&&polygonPoints.length>0){
+        ctx.strokeStyle='#a855f7';ctx.lineWidth=2/zoom;ctx.setLineDash([4/zoom,3/zoom]);ctx.fillStyle='rgba(168,85,247,0.2)';
+        ctx.beginPath();ctx.moveTo(polygonPoints[0].imgX,polygonPoints[0].imgY);
+        for(let i=1;i<polygonPoints.length;i++)ctx.lineTo(polygonPoints[i].imgX,polygonPoints[i].imgY);
+        // Draw line to cursor
+        const pos=getCanvasPos({clientX:polygonPoints[polygonPoints.length-1].canvasX+panX,clientY:polygonPoints[polygonPoints.length-1].canvasY+panY});
+        ctx.stroke();ctx.setLineDash([]);
+        polygonPoints.forEach(p=>{ctx.fillStyle='#a855f7';ctx.beginPath();ctx.arc(p.imgX,p.imgY,4/zoom,0,Math.PI*2);ctx.fill();});
+        document.getElementById('shapeCount').textContent=`顶点: ${polygonPoints.length}`;
+    }
+    ctx.restore();
+}
+
+function drawLabel(x,y,className,index,color,isSelected){
+    const fontSize=Math.max(10,13/zoom);ctx.font=`bold ${fontSize}px sans-serif`;const label=`${className} #${index+1}`;
+    const tw=ctx.measureText(label).width;const th=fontSize+4/zoom;
+    ctx.fillStyle=isSelected?'#ffffff':color;ctx.fillRect(x,y-th,tw+8/zoom,th);
+    ctx.fillStyle=isSelected?color:'#ffffff';ctx.fillText(label,x+4/zoom,y-2/zoom);
+}
+
+// ==================== ANNOTATION LIST ====================
+function renderAnnotationList(){
+    const el=document.getElementById('annotationList');
+    if(currentAnnotations.length===0){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:12px;">暂无标注</div>';document.getElementById('annotationCount').textContent='标注: 0';return;}
+    el.innerHTML=currentAnnotations.map((ann,i)=>{
+        const classIdx=classes.indexOf(ann.class_name);const color=CLASS_COLORS[classIdx>=0?classIdx%CLASS_COLORS.length:0];
+        const isPoly=ann.shape_type==='polygon';const isSel=i===selectedAnnotation;
+        const coords=isPoly?`${(ann.points||[]).length}个顶点`:`cx:${ann.cx.toFixed(3)} w:${ann.w.toFixed(3)}`;
+        return`<div class="annotation-item ${isSel?'selected':''}" onclick="selectAnnotation(${i})">
+            <span class="annotation-item-color" style="background:${color}"></span>
+            <div class="annotation-item-info">
+                <div class="annotation-item-class">${ann.class_name} #${i+1}<span class="annotation-item-type">${isPoly?'多边形':'矩形'}</span></div>
+                <div class="annotation-item-coords">${coords}</div>
+            </div>
+            <div class="annotation-item-actions">
+                <span class="act-edit" onclick="event.stopPropagation();convertToPolygon(${i})" title="${isPoly?'转矩形':'转多边形'}">${isPoly?'转矩形':'转多边形'}</span>
+                <span class="act-delete" onclick="event.stopPropagation();deleteAnnotation(${i})" title="删除">删除</span>
+            </div>
+        </div>`;
+    }).join('');
+    document.getElementById('annotationCount').textContent=`标注: ${currentAnnotations.length}`;
+}
+function selectAnnotation(i){if(currentTool==='edit'){selectedAnnotation=i;renderAnnotationList();renderCanvas();}}
+function deleteAnnotation(index){currentAnnotations.splice(index,1);if(selectedAnnotation===index)selectedAnnotation=-1;if(selectedAnnotation>index)selectedAnnotation--;unsavedChanges=true;renderAnnotationList();renderCanvas();}
+function clearAnnotations(){if(currentAnnotations.length===0)return;if(!confirm('确定要清空所有标注吗？'))return;currentAnnotations=[];selectedAnnotation=-1;unsavedChanges=true;renderAnnotationList();renderCanvas();}
+
+async function saveAnnotations(){
+    if(!currentDataset||currentImageIndex<0){showToast('请先打开图片','error');return;}const img=images[currentImageIndex];const filename=img.filename||img.name;
+    // Check for any valid annotations
+    if(currentAnnotations.length===0){showToast('没有标注可保存','error');return;}
+    try{
+        // Build YOLO-format annotations (always store bbox for training)
+        const yoloAnnotations=currentAnnotations.map(ann=>{
+            const classIdx=classes.indexOf(ann.class_name);
+            const base={class_id:classIdx>=0?classIdx:0,class_name:ann.class_name};
+            if(ann.shape_type==='polygon'&&ann.points&&imgObj){
+                const xs=ann.points.map(p=>p[0]),ys=ann.points.map(p=>p[1]);
+                const minX=Math.min(...xs),minY=Math.min(...ys),maxX=Math.max(...xs),maxY=Math.max(...ys);
+                base.cx=((minX+maxX)/2)/imgObj.naturalWidth;base.cy=((minY+maxY)/2)/imgObj.naturalHeight;
+                base.w=(maxX-minX)/imgObj.naturalWidth;base.h=(maxY-minY)/imgObj.naturalHeight;
+            }else if(ann.cx!==undefined){base.cx=ann.cx;base.cy=ann.cy;base.w=ann.w;base.h=ann.h;}else{return null;}
+            return base;
+        }).filter(Boolean);
+
+        // Save YOLO-format to server
+        const yoloRes=await fetch(`/api/datasets/${currentDataset.dataset_id}/images/${filename.split('/').map(s=>encodeURIComponent(s)).join('/')}/annotations`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({annotations:yoloAnnotations})});
+        if(!yoloRes.ok)throw new Error(`HTTP ${yoloRes.status}`);
+
+        // Also save full annotation data (with polygon vertices) locally
+        const labelmeData=currentAnnotations.map(ann=>{
+            const out={class_name:ann.class_name,shape_type:ann.shape_type||'rectangle'};
+            if(ann.shape_type==='polygon'&&ann.points){out.points=ann.points.map(p=>[Math.round(p[0]*100)/100,Math.round(p[1]*100)/100]);}
+            else{out.cx=Math.round(ann.cx*10000)/10000;out.cy=Math.round(ann.cy*10000)/10000;out.w=Math.round(ann.w*10000)/10000;out.h=Math.round(ann.h*10000)/10000;}
+            return out;
+        });
+        const polygonFile=fnameNoExt(filename)+'_shapes.json';
+        const shapeRes=await fetch(`/api/datasets/${currentDataset.dataset_id}/images/${encodeURIComponent(polygonFile)}/annotations`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({annotations:[],_shapes:labelmeData,_polygonOnly:true})});
+
+        unsavedChanges=false;images[currentImageIndex].has_annotation=true;renderImageList();
+        const polyCount=currentAnnotations.filter(a=>a.shape_type==='polygon').length;
+        showToast(`已保存 ${currentAnnotations.length} 个标注${polyCount>0?'（含'+polyCount+'个多边形）':''}`,'success');
+    }catch(e){showToast('保存失败: '+e.message,'error');}
+}
+function fnameNoExt(f){const i=f.lastIndexOf('.');return i>0?f.substring(0,i):f;}
+
+async function prevImage(){if(currentImageIndex<=0)return;if(unsavedChanges&&!confirm('当前标注未保存，是否放弃更改？'))return;await loadImage(currentImageIndex-1);}
+async function nextImage(){if(currentImageIndex>=images.length-1)return;if(unsavedChanges&&!confirm('当前标注未保存，是否放弃更改？'))return;await loadImage(currentImageIndex+1);}
+function updateImageNav(){document.getElementById('imageNavInfo').textContent=images.length>0?`${currentImageIndex+1}/${images.length}`:'0/0';}
+
+function autoAnnotate(){if(!currentDataset)return;document.getElementById('autoAnnotateModal').classList.add('active');}
+async function doAutoAnnotate(){if(!currentDataset)return;closeModal('autoAnnotateModal');const conf=document.getElementById('autoConf').value;const iou=document.getElementById('autoIou').value;showLoading('正在自动标注...','YOLO11 模型检测中');try{const res=await fetch(`/api/datasets/${currentDataset.dataset_id}/auto_annotate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({conf:parseFloat(conf),iou:parseFloat(iou)})});if(!res.ok)throw new Error((await res.json()).detail||'自动标注失败');const data=await res.json();hideLoading();showToast(`自动标注完成，共处理${data.annotated||0}张图片`,'success');if(currentImageIndex>=0)await loadImage(currentImageIndex);}catch(e){hideLoading();showToast('自动标注失败: '+e.message,'error');}}
+async function splitDataset(){if(!currentDataset)return;const train=parseFloat(document.getElementById('trainRatio').value);const val=parseFloat(document.getElementById('valRatio').value);const test=Math.max(0,Math.round((1-train-val)*100)/100);const seed=parseInt(document.getElementById('splitSeed').value)||42;showLoading('正在拆分数据集...','');try{const res=await fetch(`/api/datasets/${currentDataset.dataset_id}/split`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({train_ratio:train,val_ratio:val,test_ratio:test,seed})});if(!res.ok)throw new Error((await res.json()).detail||'拆分失败');const data=await res.json();hideLoading();closeModal('splitModal');showToast(`拆分完成：训练集${data.train||0}张，验证集${data.val||0}张，测试集${data.test||0}张`,'success');}catch(e){hideLoading();showToast('拆分失败: '+e.message,'error');}}
+async function exportDataset(){if(!currentDataset)return;const format=document.getElementById('exportFormat').value;showLoading('正在导出数据集...',`格式: ${format.toUpperCase()}`);try{const res=await fetch(`/api/datasets/${currentDataset.dataset_id}/export`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({format})});if(!res.ok)throw new Error('导出失败');const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${currentDataset.name}_${format}.zip`;a.click();URL.revokeObjectURL(url);hideLoading();closeModal('exportModal');showToast('数据集导出成功','success');}catch(e){hideLoading();showToast('导出失败: '+e.message,'error');}}
+</script>
+</body>
+</html>

@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型训练 - 墙体裂缝检测系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #3b82f6; --primary-dark: #2563eb; --success: #22c55e;
+            --warning: #eab308; --danger: #ef4444; --orange: #f97316;
+            --bg: #f0f4f8; --card: #ffffff; --text: #1e293b; --text-secondary: #64748b;
+            --border: #e2e8f0; --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            --radius: 12px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+        .header { background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #3b82f6 100%); color: white; padding: 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 20px rgba(37,99,235,0.3); }
+        .header-inner { max-width: 1600px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+        .header-logo { display: flex; align-items: center; gap: 12px; }
+        .header-logo svg { width: 32px; height: 32px; }
+        .header-title { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+        .header-subtitle { font-size: 11px; opacity: 0.8; }
+        .header-badge { display: flex; gap: 8px; align-items: center; }
+        .badge { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .nav-links { display: flex; gap: 6px; margin-left: 24px; }
+        .nav-link { color: rgba(255,255,255,0.8); text-decoration: none; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+        .nav-link:hover { background: rgba(255,255,255,0.15); color: white; }
+        .nav-link.active { background: rgba(255,255,255,0.25); color: white; }
+        .header-left { display: flex; align-items: center; }
+        .container { max-width: 1600px; margin: 0 auto; padding: 16px 24px; }
+        .main-grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; align-items: start; }
+        .left-panel { display: flex; flex-direction: column; gap: 12px; }
+        .right-panel { display: flex; flex-direction: column; gap: 16px; }
+        .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+        .card-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+        .card-header svg { width: 16px; height: 16px; color: var(--primary); }
+        .card-body { padding: 16px; }
+        .form-group { margin-bottom: 12px; }
+        .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+        .form-input { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; transition: border-color 0.2s; outline: none; }
+        .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .form-select { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; outline: none; background: white; cursor: pointer; }
+        .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .form-hint { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .param-section { margin-bottom: 16px; }
+        .param-section-title { font-size: 13px; font-weight: 700; color: var(--primary-dark); padding: 8px 0 6px; border-bottom: 1px solid #eff6ff; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .param-section-title .icon { font-size: 14px; }
+        .param-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+        .param-grid .form-group { margin-bottom: 0; }
+        .param-grid .form-label { font-size: 11px; }
+        .param-grid .form-input { font-size: 12px; padding: 6px 8px; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn svg { width: 16px; height: 16px; }
+        .btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37,99,235,0.4); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: #f1f5f9; color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #16a34a; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        .btn-block { width: 100%; }
+        .btn-group { display: flex; gap: 8px; }
+        .training-actions { display: flex; gap: 8px; margin-top: 4px; }
+        .training-actions .btn { flex: 1; }
+        .status-card { padding: 20px; }
+        .status-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .status-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-badge.running { background: #dbeafe; color: #2563eb; animation: pulse 2s infinite; }
+        .status-badge.completed { background: #dcfce7; color: #16a34a; }
+        .status-badge.failed { background: #fef2f2; color: #dc2626; }
+        .status-badge.stopped { background: #fefce8; color: #a16207; }
+        .status-badge.pending { background: #f1f5f9; color: #64748b; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .progress-bar-container { background: #e2e8f0; border-radius: 8px; height: 10px; overflow: hidden; margin-bottom: 12px; }
+        .progress-bar-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, #3b82f6, #2563eb); transition: width 0.5s ease; }
+        .progress-bar-fill.completed { background: linear-gradient(90deg, #22c55e, #16a34a); }
+        .progress-bar-fill.failed { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        .progress-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; }
+        .status-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .status-stat { text-align: center; padding: 10px; background: #f8fafc; border-radius: 8px; }
+        .status-stat-value { font-size: 20px; font-weight: 700; color: var(--primary); }
+        .status-stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .chart-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+        .chart-card .card-header { padding: 10px 14px; font-size: 13px; }
+        .chart-card .card-body { padding: 12px; }
+        .chart-canvas { width: 100%; height: 220px; display: block; }
+        .chart-legend { display: flex; gap: 16px; padding: 4px 14px 10px; justify-content: center; }
+        .chart-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-secondary); }
+        .chart-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .history-table th { background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: var(--text-secondary); border-bottom: 2px solid var(--border); font-size: 12px; }
+        .history-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+        .history-table tr:hover td { background: #f8fafc; }
+        .tag { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; background: #eff6ff; color: var(--primary); border: 1px solid #bfdbfe; }
+        .tag-success { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+        .tag-danger { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+        .tag-warning { background: #fefce8; color: #a16207; border-color: #fde68a; }
+        .tag-info { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+        .empty-state svg { width: 64px; height: 64px; color: #cbd5e1; margin-bottom: 12px; }
+        .empty-state h3 { font-size: 16px; margin-bottom: 6px; color: var(--text); }
+        .empty-state p { font-size: 13px; }
+        .toast { position: fixed; top: 80px; right: 24px; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; z-index: 2000; transform: translateX(120%); transition: transform 0.3s; box-shadow: var(--shadow-lg); }
+        .toast.show { transform: translateX(0); }
+        .toast-success { background: var(--success); color: white; }
+        .toast-error { background: var(--danger); color: white; }
+        .toast-info { background: var(--primary); color: white; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; }
+        .loading-overlay.active { display: flex; }
+        .loading-box { background: white; border-radius: var(--radius); padding: 28px 40px; text-align: center; box-shadow: var(--shadow-lg); }
+        .loading-spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 15px; font-weight: 600; color: var(--text); }
+        .loading-subtext { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+        .left-panel-scroll { max-height: calc(100vh - 100px); overflow-y: auto; padding-right: 4px; }
+        .left-panel-scroll::-webkit-scrollbar { width: 4px; }
+        .left-panel-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+        @media (max-width: 1200px) { .main-grid { grid-template-columns: 1fr; } .charts-grid { grid-template-columns: 1fr; } .status-stats { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-inner">
+        <div class="header-left">
+            <div class="header-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
+                <div>
+                    <div class="header-title">墙体裂缝检测系统</div>
+                    <div class="header-subtitle">模型训练模块</div>
+                </div>
+            </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link">🏠 首页</a>
+                <a href="/annotation" class="nav-link">🏷️ 数据标注</a>
+                <a href="/training" class="nav-link active">🎓 模型训练</a>
+                <a href="/evaluation" class="nav-link">📊 模型评估</a>
+            </div>
+        </div>
+        <div class="header-badge">
+            <span class="badge">YOLO11</span>
+            <span class="badge">QWEN-VL</span>
+            <span class="badge">AI双模型</span>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="main-grid">
+        <div class="left-panel">
+            <div class="left-panel-scroll">
+                <div class="card">
+                    <div class="card-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                        训练配置
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">数据集</label>
+                            <select class="form-select" id="datasetSelect">
+                                <option value="">请选择数据集</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">模型</label>
+                            <select class="form-select" id="modelSelect">
+                                <option value="yolo11n.pt">yolo11n (Nano - 最快)</option>
+                                <option value="yolo11s.pt">yolo11s (Small)</option>
+                                <option value="yolo11m.pt" selected>yolo11m (Medium - 推荐)</option>
+                                <option value="yolo11l.pt">yolo11l (Large)</option>
+                                <option value="yolo11x.pt">yolo11x (ExtraLarge - 最准)</option>
+                                <option value="custom">自定义权重</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="customWeightsGroup" style="display:none;">
+                            <label class="form-label">自定义权重路径</label>
+                            <input type="text" class="form-input" id="customWeights" placeholder="输入自定义权重文件路径">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                        训练参数
+                    </div>
+                    <div class="card-body">
+                        <div class="param-section">
+                            <div class="param-section-title"><span class="icon">⚙️</span> 基础参数</div>
+                            <div class="param-grid">
+                                <div class="form-group">
+                                    <label class="form-label">epochs</label>
+                                    <input type="number" class="form-input" id="epochs" value="100" min="1">
+                                    <div class="form-hint">默认: 100</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">batch_size</label>
+                                    <input type="number" class="form-input" id="batch_size" value="16" min="1">
+                                    <div class="form-hint">默认: 16</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">imgsz</label>
+                                    <input type="number" class="form-input" id="imgsz" value="640" min="32">
+                                    <div class="form-hint">默认: 640</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">patience</label>
+                                    <input type="number" class="form-input" id="patience" value="50" min="0">
+                                    <div class="form-hint">默认: 50</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="param-section">
+                            <div class="param-section-title"><span class="icon">📈</span> 学习率</div>
+                            <div class="param-grid">
+                                <div class="form-group">
+                                    <label class="form-label">lr0</label>
+                                    <input type="number" class="form-input" id="lr0" value="0.01" step="0.001" min="0">
+                                    <div class="form-hint">默认: 0.01</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">lrf</label>
+                                    <input type="number" class="form-input" id="lrf" value="0.01" step="0.001" min="0">
+                                    <div class="form-hint">默认: 0.01</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">momentum</label>
+                                    <input type="number" class="form-input" id="momentum" value="0.937" step="0.001" min="0" max="1">
+                                    <div class="form-hint">默认: 0.937</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">weight_decay</label>
+                                    <input type="number" class="form-input" id="weight_decay" value="0.0005" step="0.0001" min="0">
+                                    <div class="form-hint">默认: 0.0005</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">warmup_epochs</label>
+                                    <input type="number" class="form-input" id="warmup_epochs" value="3" step="1" min="0">
+                                    <div class="form-hint">默认: 3</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="param-section">
+                            <div class="param-section-title"><span class="icon">⚖️</span> 损失权重</div>
+                            <div class="param-grid">
+                                <div class="form-group">
+                                    <label class="form-label">box</label>
+                                    <input type="number" class="form-input" id="box" value="7.5" step="0.1" min="0">
+                                    <div class="form-hint">默认: 7.5</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">cls</label>
+                                    <input type="number" class="form-input" id="cls" value="0.5" step="0.1" min="0">
+                                    <div class="form-hint">默认: 0.5</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">dfl</label>
+                                    <input type="number" class="form-input" id="dfl" value="1.5" step="0.1" min="0">
+                                    <div class="form-hint">默认: 1.5</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="param-section">
+                            <div class="param-section-title"><span class="icon">🔄</span> 数据增强</div>
+                            <div class="param-grid">
+                                <div class="form-group">
+                                    <label class="form-label">hsv_h</label>
+                                    <input type="number" class="form-input" id="hsv_h" value="0.015" step="0.001" min="0" max="1">
+                                    <div class="form-hint">默认: 0.015</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">hsv_s</label>
+                                    <input type="number" class="form-input" id="hsv_s" value="0.7" step="0.05" min="0" max="1">
+                                    <div class="form-hint">默认: 0.7</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">hsv_v</label>
+                                    <input type="number" class="form-input" id="hsv_v" value="0.4" step="0.05" min="0" max="1">
+                                    <div class="form-hint">默认: 0.4</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">degrees</label>
+                                    <input type="number" class="form-input" id="degrees" value="0" step="1" min="0" max="180">
+                                    <div class="form-hint">默认: 0</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">translate</label>
+                                    <input type="number" class="form-input" id="translate" value="0.1" step="0.05" min="0" max="0.5">
+                                    <div class="form-hint">默认: 0.1</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">scale</label>
+                                    <input type="number" class="form-input" id="scale" value="0.5" step="0.05" min="0" max="1">
+                                    <div class="form-hint">默认: 0.5</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">shear</label>
+                                    <input type="number" class="form-input" id="shear" value="0" step="1" min="0" max="45">
+                                    <div class="form-hint">默认: 0</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">fliplr</label>
+                                    <input type="number" class="form-input" id="fliplr" value="0.5" step="0.05" min="0" max="1">
+                                    <div class="form-hint">默认: 0.5</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">mosaic</label>
+                                    <input type="number" class="form-input" id="mosaic" value="1" step="0.05" min="0" max="1">
+                                    <div class="form-hint">默认: 1.0</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">mixup</label>
+                                    <input type="number" class="form-input" id="mixup" value="0" step="0.05" min="0" max="1">
+                                    <div class="form-hint">默认: 0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="training-actions">
+                            <button class="btn btn-primary" id="startTrainBtn" onclick="startTraining()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                开始训练
+                            </button>
+                            <button class="btn btn-danger" id="stopTrainBtn" onclick="stopTraining()" style="display:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                                停止训练
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="card" id="statusCard">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    训练状态
+                </div>
+                <div class="card-body status-card" id="statusContent">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                        <h3>暂无训练任务</h3>
+                        <p>请在左侧配置训练参数并开始训练</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="chartsCard" style="display:none;">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                    训练曲线
+                </div>
+                <div class="card-body" style="padding:16px;">
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                Box Loss
+                            </div>
+                            <div class="card-body"><canvas id="chartBoxLoss" class="chart-canvas"></canvas></div>
+                            <div class="chart-legend" id="legendBoxLoss"></div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/></svg>
+                                Class Loss
+                            </div>
+                            <div class="card-body"><canvas id="chartClsLoss" class="chart-canvas"></canvas></div>
+                            <div class="chart-legend" id="legendClsLoss"></div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                mAP
+                            </div>
+                            <div class="card-body"><canvas id="chartMap" class="chart-canvas"></canvas></div>
+                            <div class="chart-legend" id="legendMap"></div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+                                Precision / Recall
+                            </div>
+                            <div class="card-body"><canvas id="chartPR" class="chart-canvas"></canvas></div>
+                            <div class="chart-legend" id="legendPR"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    训练历史
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div id="historyContent">
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <h3>暂无训练记录</h3>
+                            <p>完成训练后将在此显示历史记录</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-box">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loadingText">处理中...</div>
+        <div class="loading-subtext" id="loadingSubtext"></div>
+    </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let activeTrainingId = null;
+let progressTimer = null;
+let trainings = [];
+
+function showToast(m, t) {
+    const el = document.getElementById('toast');
+    el.textContent = m;
+    el.className = `toast toast-${t||'info'}`;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function showLoading(t, s) {
+    document.getElementById('loadingText').textContent = t || '处理中...';
+    document.getElementById('loadingSubtext').textContent = s || '';
+    document.getElementById('loadingOverlay').classList.add('active');
+}
+
+function hideLoading() {
+    document.getElementById('loadingOverlay').classList.remove('active');
+}
+
+document.getElementById('modelSelect').addEventListener('change', function() {
+    document.getElementById('customWeightsGroup').style.display = this.value === 'custom' ? 'block' : 'none';
+});
+
+async function loadDatasets() {
+    try {
+        const res = await fetch('/api/datasets');
+        if (!res.ok) throw new Error('加载失败');
+        const data = await res.json();
+        const datasets = data.datasets || data;
+        const sel = document.getElementById('datasetSelect');
+        sel.innerHTML = '<option value="">请选择数据集</option>';
+        datasets.forEach(ds => {
+            const opt = document.createElement('option');
+            opt.value = ds.dataset_id;
+            opt.textContent = `${ds.name} (${ds.image_count || 0}张图片${ds.split_info ? ' · 已分割' : ''})`;
+            sel.appendChild(opt);
+        });
+    } catch (e) {
+        showToast('加载数据集失败: ' + e.message, 'error');
+    }
+}
+
+async function loadModels() {
+    try {
+        const res = await fetch('/api/train/models');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.models && data.models.length > 0) {
+            const sel = document.getElementById('modelSelect');
+            const trained = data.models.filter(m => m.type === 'trained');
+            // Remove old trained model options (after the custom option)
+            const customOpt = sel.querySelector('option[value=\"custom\"]');
+            while (customOpt && customOpt.nextElementSibling) {
+                customOpt.nextElementSibling.remove();
+            }
+            // Add trained models
+            if (trained.length > 0) {
+                const grp = document.createElement('optgroup');
+                grp.label = '🎯 微调模型';
+                trained.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.path;
+                    opt.textContent = m.name;
+                    grp.appendChild(opt);
+                });
+                sel.appendChild(grp);
+            }
+        }
+    } catch (e) {}
+}
+
+async function loadTrainings() {
+    try {
+        const res = await fetch('/api/train/list');
+        if (!res.ok) throw new Error('加载失败');
+        const data = await res.json();
+        trainings = data.trainings || data;
+        renderHistory();
+        const running = trainings.find(t => t.status === 'running' || t.status === 'pending');
+        if (running) {
+            activeTrainingId = running.training_id;
+            updateTrainingUI(true);
+            startProgressPolling();
+        }
+    } catch (e) {
+        showToast('加载训练记录失败: ' + e.message, 'error');
+    }
+}
+
+async function startTraining() {
+    const datasetId = document.getElementById('datasetSelect').value;
+    if (!datasetId) { showToast('请选择数据集', 'error'); return; }
+    const modelSelect = document.getElementById('modelSelect');
+    let model = modelSelect.value;
+    if (model === 'custom') {
+        model = document.getElementById('customWeights').value.trim();
+        if (!model) { showToast('请输入自定义权重路径', 'error'); return; }
+    }
+    const fd = new FormData();
+    fd.append('dataset_id', datasetId);
+    fd.append('model', model);
+    const params = ['epochs','batch_size','imgsz','patience','lr0','lrf','momentum','weight_decay','warmup_epochs','box','cls','dfl','hsv_h','hsv_s','hsv_v','degrees','translate','scale','shear','fliplr','mosaic','mixup'];
+    params.forEach(p => {
+        const el = document.getElementById(p);
+        if (el && el.value !== '') fd.append(p, el.value);
+    });
+    showLoading('正在启动训练...', '请稍候');
+    try {
+        const res = await fetch('/api/train/start', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error((await res.json()).detail || '启动训练失败');
+        const data = await res.json();
+        activeTrainingId = data.training?.training_id || data.training_id || data.id;
+        hideLoading();
+        showToast('训练已启动', 'success');
+        updateTrainingUI(true);
+        startProgressPolling();
+        await loadTrainings();
+    } catch (e) {
+        hideLoading();
+        showToast('启动训练失败: ' + e.message, 'error');
+    }
+}
+
+async function stopTraining() {
+    if (!activeTrainingId) return;
+    try {
+        const res = await fetch(`/api/train/stop/${activeTrainingId}`, { method: 'POST' });
+        if (!res.ok) throw new Error('停止失败');
+        showToast('训练已停止', 'info');
+        stopProgressPolling();
+        activeTrainingId = null;
+        updateTrainingUI(false);
+        await loadTrainings();
+    } catch (e) {
+        showToast('停止训练失败: ' + e.message, 'error');
+    }
+}
+
+async function resumeTraining(id) {
+    if (!confirm('确定要继续此训练吗？将从上次保存的检查点恢复。')) return;
+    showLoading('正在恢复训练...', '请稍候');
+    try {
+        const res = await fetch(`/api/train/resume/${id}`, { method: 'POST' });
+        if (!res.ok) throw new Error((await res.json()).detail || '恢复失败');
+        const data = await res.json();
+        activeTrainingId = data.training?.training_id || id;
+        hideLoading();
+        showToast('训练已恢复', 'success');
+        updateTrainingUI(true);
+        startProgressPolling();
+        await loadTrainings();
+    } catch (e) {
+        hideLoading();
+        showToast('恢复训练失败: ' + e.message, 'error');
+    }
+}
+
+async function deleteTraining(id) {
+    if (!confirm('确定要删除此训练记录吗？')) return;
+    try {
+        const res = await fetch(`/api/train/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('删除失败');
+        showToast('训练记录已删除', 'success');
+        if (activeTrainingId === id) {
+            stopProgressPolling();
+            activeTrainingId = null;
+            updateTrainingUI(false);
+        }
+        await loadTrainings();
+    } catch (e) {
+        showToast('删除失败: ' + e.message, 'error');
+    }
+}
+
+function updateTrainingUI(isRunning) {
+    document.getElementById('startTrainBtn').style.display = isRunning ? 'none' : 'flex';
+    document.getElementById('stopTrainBtn').style.display = isRunning ? 'flex' : 'none';
+    const inputs = document.querySelectorAll('.left-panel-scroll input, .left-panel-scroll select');
+    inputs.forEach(el => { if (isRunning) el.setAttribute('disabled', 'disabled'); else el.removeAttribute('disabled'); });
+}
+
+function startProgressPolling() {
+    stopProgressPolling();
+    fetchProgress();
+    progressTimer = setInterval(fetchProgress, 5000);
+}
+
+function stopProgressPolling() {
+    if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+}
+
+async function fetchProgress() {
+    if (!activeTrainingId) return;
+    try {
+        const [statusRes, progressRes, curvesRes] = await Promise.all([
+            fetch(`/api/train/status/${activeTrainingId}`),
+            fetch(`/api/train/progress/${activeTrainingId}`),
+            fetch(`/api/train/curves/${activeTrainingId}`)
+        ]);
+        if (!statusRes.ok) throw new Error('获取状态失败');
+        const status = await statusRes.json();
+        let progress = {};
+        try { if (progressRes.ok) progress = await progressRes.json(); } catch(e) {}
+        renderStatus(status, progress);
+        if (curvesRes.ok) {
+            const curvesData = await curvesRes.json();
+            renderCurves(curvesData.curves || curvesData);
+        }
+        if (status.status === 'completed' || status.status === 'failed' || status.status === 'stopped') {
+            stopProgressPolling();
+            activeTrainingId = null;
+            updateTrainingUI(false);
+            await loadTrainings();
+        }
+    } catch (e) {}
+}
+
+function renderStatus(s, prog) {
+    const el = document.getElementById('statusContent');
+    const statusMap = { running: '训练中', completed: '已完成', failed: '失败', stopped: '已停止', pending: '等待中', interrupted: '已中断' };
+    const statusLabel = statusMap[s.status] || s.status || '未知';
+
+    const totalEpochs = s.config?.epochs || (prog && prog.total_epochs) || 0;
+    const epochsDone = (prog && prog.epochs_completed) || 0;
+    // For completed trainings, use total_epochs as epochs_done
+    const displayEpochs = (s.status === 'completed' && epochsDone === 0) ? totalEpochs : epochsDone;
+    const pct = totalEpochs > 0 ? Math.round(displayEpochs / totalEpochs * 100) : 0;
+
+    const metrics = s.results?.metrics || {};
+    const lastMetric = metrics.last_epoch || {};
+    const bestMetric = metrics.best_epoch || lastMetric || {};
+
+    // Get latest metric from progress data for real-time display
+    const progMetrics = (prog && prog.metrics && prog.metrics.length > 0) ? prog.metrics[prog.metrics.length - 1] : {};
+    const realtime = (s.status === 'running') ? progMetrics : lastMetric;
+
+    const map50 = bestMetric['metrics/mAP50(B)'] || '-';
+    const map5095 = bestMetric['metrics/mAP50-95(B)'] || '-';
+    const boxLoss = realtime['train/box_loss'] || lastMetric['train/box_loss'] || lastMetric['val/box_loss'] || '-';
+    const clsLoss = realtime['train/cls_loss'] || lastMetric['train/cls_loss'] || '-';
+    const dflLoss = realtime['train/dfl_loss'] || lastMetric['train/dfl_loss'] || '-';
+    const valBoxLoss = realtime['val/box_loss'] || lastMetric['val/box_loss'] || '-';
+    const valClsLoss = realtime['val/cls_loss'] || lastMetric['val/cls_loss'] || '-';
+    const currentLR = realtime['lr/pg0'] || lastMetric['lr/pg0'] || '-';
+    const currentPrecision = realtime['metrics/precision(B)'] || lastMetric['metrics/precision(B)'] || '-';
+    const currentRecall = realtime['metrics/recall(B)'] || lastMetric['metrics/recall(B)'] || '-';
+    const startTime = s.started_at || '-';
+
+    let duration = '-';
+    if (s.completed_at && s.started_at) {
+        const start = new Date(s.started_at.replace(' ', 'T'));
+        const end = new Date(s.completed_at.replace(' ', 'T'));
+        const diff = Math.round((end - start) / 1000);
+        duration = diff >= 3600 ? `${Math.floor(diff/3600)}h${Math.floor(diff%3600/60)}m` :
+                   diff >= 60 ? `${Math.floor(diff/60)}m${diff%60}s` : `${diff}s`;
+    } else if (s.started_at && s.status === 'running') {
+        const start = new Date(s.started_at.replace(' ', 'T'));
+        const diff = Math.round((Date.now() - start) / 1000);
+        duration = diff >= 3600 ? `${Math.floor(diff/3600)}h${Math.floor(diff%3600/60)}m` :
+                   diff >= 60 ? `${Math.floor(diff/60)}m${diff%60}s` : `${diff}s`;
+    }
+
+    const fmtVal = v => typeof v === 'number' ? v.toFixed(4) : v;
+
+    el.innerHTML = `
+        <div class="status-header">
+            <div class="status-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                训练 #${s.training_id || activeTrainingId}
+            </div>
+            <span class="status-badge ${s.status}">${statusLabel}</span>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill ${s.status}" style="width:${pct}%"></div>
+        </div>
+        <div class="progress-info">
+            <span>进度: ${pct}%</span>
+            <span>Epoch: ${displayEpochs} / ${totalEpochs}</span>
+            <span>用时: ${duration}</span>
+            ${s.status === 'running' ? `<span>学习率: ${fmtVal(currentLR)}</span>` : ''}
+        </div>
+        <div class="status-stats">
+            <div class="status-stat">
+                <div class="status-stat-value">${fmtVal(boxLoss)}</div>
+                <div class="status-stat-label">Train Box Loss</div>
+            </div>
+            <div class="status-stat">
+                <div class="status-stat-value">${fmtVal(clsLoss)}</div>
+                <div class="status-stat-label">Train Cls Loss</div>
+            </div>
+            <div class="status-stat">
+                <div class="status-stat-value">${fmtVal(valBoxLoss)}</div>
+                <div class="status-stat-label">Val Box Loss</div>
+            </div>
+            <div class="status-stat">
+                <div class="status-stat-value">${fmtVal(valClsLoss)}</div>
+                <div class="status-stat-label">Val Cls Loss</div>
+            </div>
+            <div class="status-stat">
+                <div class="status-stat-value">${fmtVal(map50)}</div>
+                <div class="status-stat-label">Best mAP50</div>
+            </div>
+            <div class="status-stat">
+                <div class="status-stat-value">${fmtVal(map5095)}</div>
+                <div class="status-stat-label">Best mAP50-95</div>
+            </div>
+            <div class="status-stat">
+                <div class="status-stat-value">${fmtVal(currentPrecision)}</div>
+                <div class="status-stat-label">Precision</div>
+            </div>
+            <div class="status-stat">
+                <div class="status-stat-value">${fmtVal(currentRecall)}</div>
+                <div class="status-stat-label">Recall</div>
+            </div>
+        </div>
+        ${s.status === 'running' ? '<div style="text-align:center;padding:8px;color:#3b82f6;font-size:12px;animation:pulse 2s infinite;">训练进行中，数据每5秒自动刷新...</div>' : ''}
+    `;
+    document.getElementById('chartsCard').style.display = 'block';
+}
+
+function renderCurves(curves) {
+    if (!curves) return;
+    drawLineChart('chartBoxLoss', 'legendBoxLoss', [
+        { label: 'Train Box Loss', data: curves.train_box_loss || [], color: '#3b82f6' },
+        { label: 'Val Box Loss', data: curves.val_box_loss || [], color: '#ef4444' }
+    ]);
+    drawLineChart('chartClsLoss', 'legendClsLoss', [
+        { label: 'Train Cls Loss', data: curves.train_cls_loss || [], color: '#3b82f6' },
+        { label: 'Val Cls Loss', data: curves.val_cls_loss || [], color: '#ef4444' }
+    ]);
+    drawLineChart('chartMap', 'legendMap', [
+        { label: 'mAP50', data: curves.map50 || curves.metrics_map50 || [], color: '#22c55e' },
+        { label: 'mAP50-95', data: curves.map50_95 || curves.metrics_map50_95 || [], color: '#f97316' }
+    ]);
+    drawLineChart('chartPR', 'legendPR', [
+        { label: 'Precision', data: curves.precision || curves.metrics_precision || [], color: '#3b82f6' },
+        { label: 'Recall', data: curves.recall || curves.metrics_recall || [], color: '#8b5cf6' }
+    ]);
+}
+
+function drawLineChart(canvasId, legendId, series) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    const W = rect.width;
+    const H = rect.height;
+    const pad = { top: 20, right: 20, bottom: 30, left: 50 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#fafbfc';
+    ctx.fillRect(0, 0, W, H);
+
+    let allX = [];
+    let allY = [];
+    series.forEach(s => {
+        s.data.forEach((pt, i) => {
+            if (typeof pt === 'object') { allX.push(pt.x || i); allY.push(pt.y); }
+            else { allX.push(i); allY.push(pt); }
+        });
+    });
+
+    if (allY.length === 0) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('暂无数据', W / 2, H / 2);
+        renderLegend(legendId, series);
+        return;
+    }
+
+    const xMin = Math.min(...allX);
+    const xMax = Math.max(...allX);
+    let yMin = Math.min(...allY);
+    let yMax = Math.max(...allY);
+    if (yMin === yMax) { yMin -= 0.1; yMax += 0.1; }
+    const yPad = (yMax - yMin) * 0.1;
+    yMin -= yPad;
+    yMax += yPad;
+
+    function toCanvasX(v) { return pad.left + ((v - xMin) / (xMax - xMin || 1)) * plotW; }
+    function toCanvasY(v) { return pad.top + plotH - ((v - yMin) / (yMax - yMin || 1)) * plotH; }
+
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 0.5;
+    const yTicks = 5;
+    for (let i = 0; i <= yTicks; i++) {
+        const yVal = yMin + (yMax - yMin) * i / yTicks;
+        const cy = toCanvasY(yVal);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, cy);
+        ctx.lineTo(W - pad.right, cy);
+        ctx.stroke();
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(yVal.toFixed(2), pad.left - 6, cy + 3);
+    }
+
+    const xTicks = Math.min(5, allX.length);
+    for (let i = 0; i <= xTicks; i++) {
+        const xVal = xMin + (xMax - xMin) * i / xTicks;
+        const cx = toCanvasX(xVal);
+        ctx.beginPath();
+        ctx.moveTo(cx, pad.top);
+        ctx.lineTo(cx, pad.top + plotH);
+        ctx.stroke();
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(Math.round(xVal), cx, pad.top + plotH + 16);
+    }
+
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, pad.top);
+    ctx.lineTo(pad.left, pad.top + plotH);
+    ctx.lineTo(W - pad.right, pad.top + plotH);
+    ctx.stroke();
+
+    series.forEach(s => {
+        if (s.data.length === 0) return;
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        s.data.forEach((pt, i) => {
+            const x = typeof pt === 'object' ? (pt.x || i) : i;
+            const y = typeof pt === 'object' ? pt.y : pt;
+            const cx = toCanvasX(x);
+            const cy = toCanvasY(y);
+            if (i === 0) ctx.moveTo(cx, cy);
+            else ctx.lineTo(cx, cy);
+        });
+        ctx.stroke();
+
+        if (s.data.length <= 50) {
+            s.data.forEach((pt, i) => {
+                const x = typeof pt === 'object' ? (pt.x || i) : i;
+                const y = typeof pt === 'object' ? pt.y : pt;
+                const cx = toCanvasX(x);
+                const cy = toCanvasY(y);
+                ctx.fillStyle = s.color;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+    });
+
+    renderLegend(legendId, series);
+}
+
+function renderLegend(legendId, series) {
+    const el = document.getElementById(legendId);
+    if (!el) return;
+    el.innerHTML = series.map(s => `
+        <div class="chart-legend-item">
+            <span class="chart-legend-dot" style="background:${s.color}"></span>
+            ${s.label}
+        </div>
+    `).join('');
+}
+
+function renderHistory() {
+    const el = document.getElementById('historyContent');
+    if (!trainings || trainings.length === 0) {
+        el.innerHTML = `<div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <h3>暂无训练记录</h3>
+            <p>完成训练后将在此显示历史记录</p>
+        </div>`;
+        return;
+    }
+    const statusTagMap = {
+        running: '<span class="tag tag-info">训练中</span>',
+        completed: '<span class="tag tag-success">已完成</span>',
+        failed: '<span class="tag tag-danger">失败</span>',
+        stopped: '<span class="tag tag-warning">已停止</span>',
+        pending: '<span class="tag">等待中</span>',
+        interrupted: '<span class="tag tag-warning">已中断</span>'
+    };
+    let html = `<table class="history-table">
+        <thead><tr>
+            <th>ID</th><th>模型</th><th>状态</th><th>mAP50</th><th>mAP50-95</th><th>Epochs</th><th>开始时间</th><th>用时</th><th>操作</th>
+        </tr></thead><tbody>`;
+    trainings.forEach(t => {
+        const statusTag = statusTagMap[t.status] || `<span class="tag">${t.status}</span>`;
+        const metrics = t.results?.metrics || {};
+        const bestMetrics = metrics.best_epoch || metrics.last_epoch || {};
+        const map50 = bestMetrics['metrics/mAP50(B)'] || '-';
+        const map5095 = bestMetrics['metrics/mAP50-95(B)'] || '-';
+        const epoch = metrics.last_epoch?.epoch || '-';
+        const totalEpochs = t.config?.epochs || '-';
+        const epochStr = `${epoch}/${totalEpochs}`;
+        const startTime = t.started_at || '-';
+        const duration = t.completed_at ? t.completed_at : '-';
+        const model = t.config?.model || 'yolo11n.pt';
+        const isRunning = t.status === 'running' || t.status === 'pending';
+        html += `<tr>
+            <td style="font-weight:600;">${t.training_id}</td>
+            <td>${model}</td>
+            <td>${statusTag}</td>
+            <td>${map50}</td>
+            <td>${map5095}</td>
+            <td>${epochStr}</td>
+            <td style="font-size:12px;">${startTime}</td>
+            <td>${duration}</td>
+            <td>
+                <div class="btn-group">
+                    ${isRunning ? `<button class="btn btn-danger btn-sm" onclick="viewTraining('${t.training_id}')">查看</button>` : `<button class="btn btn-secondary btn-sm" onclick="viewTraining('${t.training_id}')">查看</button>`}
+                    ${!isRunning ? `<button class="btn btn-success btn-sm" onclick="resumeTraining('${t.training_id}')">继续</button>` : ''}
+                    <button class="btn btn-secondary btn-sm" onclick="deleteTraining('${t.training_id}')" ${isRunning ? 'disabled' : ''}>删除</button>
+                </div>
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+async function viewTraining(id) {
+    activeTrainingId = id;
+    try {
+        const [statusRes, progressRes, curvesRes] = await Promise.all([
+            fetch(`/api/train/status/${id}`),
+            fetch(`/api/train/progress/${id}`),
+            fetch(`/api/train/curves/${id}`)
+        ]);
+        if (!statusRes.ok) throw new Error('获取状态失败');
+        const status = await statusRes.json();
+        let progress = {};
+        try { if (progressRes.ok) progress = await progressRes.json(); } catch(e) {}
+        renderStatus(status, progress);
+        const isRunning = status.status === 'running' || status.status === 'pending';
+        updateTrainingUI(isRunning);
+        if (isRunning) {
+            startProgressPolling();
+        } else {
+            stopProgressPolling();
+        }
+        if (curvesRes.ok) {
+            const curvesData = await curvesRes.json();
+            renderCurves(curvesData.curves || curvesData);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+        showToast('获取训练详情失败: ' + e.message, 'error');
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    loadDatasets();
+    loadModels();
+    loadTrainings();
+});
+
+window.addEventListener('resize', () => {
+    if (activeTrainingId) fetchProgress();
+});
+</script>
+</body>
+</html>

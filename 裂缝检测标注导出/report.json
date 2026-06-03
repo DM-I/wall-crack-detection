@@ -1,0 +1,51 @@
+{
+  "report_id": "f6bcb933",
+  "report_title": "墙体裂缝检测审核报告",
+  "generated_at": "2026-05-22 10:45:08",
+  "project_info": {
+    "project_name": "墙体裂缝检测项目",
+    "location": "待填写",
+    "inspector": "AI自动检测"
+  },
+  "image_info": {
+    "filename": "95159c76_DJI_20251202160551_1142_V.JPG",
+    "image_size": {
+      "width": 5280,
+      "height": 3956
+    }
+  },
+  "detection_summary": {
+    "total_cracks": 0,
+    "has_crack": false,
+    "severity": "轻微",
+    "severity_color": "#22c55e",
+    "severity_description": "裂缝宽度<0.2mm，无需处理",
+    "class_distribution": {},
+    "max_confidence": 0
+  },
+  "detection_details": [],
+  "ai_analysis": {
+    "crack_found": false,
+    "crack_description": "未检测到明显裂缝",
+    "crack_types": [],
+    "estimated_width": "0mm",
+    "possible_causes": [],
+    "risk_assessment": "墙体表面状况良好，未发现明显裂缝",
+    "risk_level": "低",
+    "repair_suggestions": [
+      "建议定期巡检，持续观察"
+    ],
+    "urgency": "持续观察",
+    "professional_opinion": "当前墙体状况良好，无需特殊处理，建议保持定期检查。"
+  },
+  "conclusion": "经AI视觉检测系统分析，该墙体表面未发现明显裂缝，墙体状况良好。建议保持定期巡检，持续监测墙体状态变化。",
+  "recommendations": [
+    "对检测区域进行标记，建立裂缝档案",
+    "使用专业裂缝测宽仪进行精确测量",
+    "记录裂缝位置、走向、宽度等参数",
+    "继续观察，建议每3个月巡检一次",
+    "记录裂缝当前状态作为基线数据",
+    "关注环境温湿度变化对裂缝的影响",
+    "建议定期巡检，持续观察"
+  ]
+}

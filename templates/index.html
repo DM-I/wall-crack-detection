@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>墙体裂缝检测与审核报告系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #3b82f6; --primary-dark: #2563eb; --success: #22c55e;
+            --warning: #eab308; --danger: #ef4444; --orange: #f97316;
+            --bg: #f0f4f8; --card: #ffffff; --text: #1e293b; --text-secondary: #64748b;
+            --border: #e2e8f0; --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            --radius: 12px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+        .header { background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #3b82f6 100%); color: white; padding: 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 20px rgba(37,99,235,0.3); }
+        .header-inner { max-width: 1400px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+        .header-logo { display: flex; align-items: center; gap: 12px; }
+        .header-logo svg { width: 36px; height: 36px; }
+        .header-title { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
+        .header-subtitle { font-size: 12px; opacity: 0.8; }
+        .header-badge { display: flex; gap: 8px; align-items: center; }
+        .badge { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+        .main-grid { display: grid; grid-template-columns: 420px 1fr; gap: 24px; align-items: start; }
+        .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 20px; }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
+        .card-header svg { width: 18px; height: 18px; color: var(--primary); }
+        .card-body { padding: 20px; }
+        .upload-mode-tabs { display: flex; gap: 0; margin-bottom: 16px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+        .mode-tab { flex: 1; padding: 10px 8px; text-align: center; font-size: 13px; font-weight: 600; cursor: pointer; background: #f8fafc; border: none; transition: all 0.2s; color: var(--text-secondary); }
+        .mode-tab.active { background: var(--primary); color: white; }
+        .mode-tab:hover:not(.active) { background: #e2e8f0; }
+        .upload-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 30px 20px; text-align: center; cursor: pointer; transition: all 0.3s; background: #f8fafc; position: relative; }
+        .upload-zone:hover, .upload-zone.dragover { border-color: var(--primary); background: #eff6ff; }
+        .upload-zone.dragover { transform: scale(1.02); }
+        .upload-zone svg { width: 40px; height: 40px; color: var(--primary); margin-bottom: 8px; }
+        .upload-zone p { color: var(--text-secondary); font-size: 13px; }
+        .upload-zone .upload-hint { font-size: 11px; margin-top: 6px; color: #94a3b8; }
+        .upload-zone input { display: none; }
+        .preview-container { position: relative; border-radius: var(--radius); overflow: hidden; background: #1a1a2e; }
+        .preview-container img { width: 100%; max-height: 250px; object-fit: contain; display: block; }
+        .preview-remove { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.6); color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+        .preview-remove:hover { background: var(--danger); }
+        .file-list { max-height: 180px; overflow-y: auto; margin-top: 12px; }
+        .file-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: #f8fafc; border-radius: 6px; margin-bottom: 4px; font-size: 12px; }
+        .file-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+        .file-item-remove { color: var(--danger); cursor: pointer; margin-left: 8px; font-weight: bold; }
+        .file-count { font-size: 12px; color: var(--primary); font-weight: 600; margin-top: 8px; }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+        .form-input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; transition: border-color 0.2s; outline: none; }
+        .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .slider-group { margin-bottom: 16px; }
+        .slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .slider-value { font-size: 13px; font-weight: 600; color: var(--primary); background: #eff6ff; padding: 2px 8px; border-radius: 4px; }
+        input[type="range"] { width: 100%; height: 6px; -webkit-appearance: none; background: var(--border); border-radius: 3px; outline: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--primary); cursor: pointer; box-shadow: 0 2px 6px rgba(59,130,246,0.4); }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; width: 100%; }
+        .btn svg { width: 18px; height: 18px; }
+        .btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37,99,235,0.4); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: #f1f5f9; color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #16a34a; }
+        .results-area { min-height: 400px; }
+        .empty-state { text-align: center; padding: 80px 20px; color: var(--text-secondary); }
+        .empty-state svg { width: 80px; height: 80px; color: #cbd5e1; margin-bottom: 16px; }
+        .empty-state h3 { font-size: 18px; margin-bottom: 8px; color: var(--text); }
+        .empty-state p { font-size: 14px; }
+        .result-tabs { display: flex; border-bottom: 2px solid var(--border); padding: 0 20px; }
+        .result-tab { padding: 12px 20px; font-size: 14px; font-weight: 500; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none; }
+        .result-tab:hover { color: var(--primary); }
+        .result-tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+        .tab-content { display: none; padding: 20px; }
+        .tab-content.active { display: block; }
+        .image-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .image-box { border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+        .image-box-label { padding: 8px 12px; background: #f8fafc; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+        .image-box img { width: 100%; max-height: 350px; object-fit: contain; background: #1a1a2e; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: #f8fafc; border-radius: 8px; padding: 16px; text-align: center; border: 1px solid var(--border); }
+        .stat-value { font-size: 28px; font-weight: 700; line-height: 1.2; }
+        .stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+        .detection-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .detection-table th { background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: var(--text-secondary); border-bottom: 2px solid var(--border); }
+        .detection-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+        .detection-table tr:hover td { background: #f8fafc; }
+        .confidence-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; width: 80px; }
+        .confidence-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+        .tag { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; background: #eff6ff; color: var(--primary); border: 1px solid #bfdbfe; }
+        .tag-warning { background: #fefce8; color: #a16207; border-color: #fde68a; }
+        .tag-danger { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+        .tag-success { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+        .analysis-section { margin-bottom: 24px; }
+        .analysis-section-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .analysis-section-title svg { width: 18px; height: 18px; color: var(--primary); }
+        .analysis-text { font-size: 14px; color: var(--text); line-height: 1.8; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border-left: 3px solid var(--primary); }
+        .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .report-container { font-size: 14px; }
+        .report-header-section { text-align: center; padding: 24px; background: linear-gradient(135deg, #1e3a5f, #2563eb); color: white; border-radius: var(--radius); margin-bottom: 20px; }
+        .report-header-section h2 { font-size: 22px; margin-bottom: 8px; }
+        .report-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+        .report-meta-item { background: #f8fafc; padding: 12px; border-radius: 8px; text-align: center; }
+        .report-meta-label { font-size: 12px; color: var(--text-secondary); }
+        .report-meta-value { font-size: 14px; font-weight: 600; margin-top: 4px; }
+        .report-section { margin-bottom: 20px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .report-section-header { padding: 10px 16px; background: #f1f5f9; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+        .report-section-body { padding: 16px; }
+        .report-conclusion { padding: 16px; background: linear-gradient(135deg, #eff6ff, #f0f9ff); border-radius: 8px; border: 1px solid #bfdbfe; line-height: 1.8; }
+        .report-rec-list { list-style: none; counter-reset: rec; }
+        .report-rec-list li { counter-increment: rec; padding: 8px 0; border-bottom: 1px solid #f1f5f9; display: flex; gap: 8px; align-items: flex-start; }
+        .report-rec-list li::before { content: counter(rec); min-width: 24px; height: 24px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+        .report-actions { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+        .report-actions .btn { width: auto; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; }
+        .loading-overlay.active { display: flex; }
+        .loading-box { background: white; border-radius: var(--radius); padding: 32px 48px; text-align: center; box-shadow: var(--shadow-lg); }
+        .loading-spinner { width: 48px; height: 48px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 16px; font-weight: 600; color: var(--text); }
+        .loading-subtext { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+        .toast { position: fixed; top: 80px; right: 24px; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; z-index: 2000; transform: translateX(120%); transition: transform 0.3s; box-shadow: var(--shadow-lg); }
+        .toast.show { transform: translateX(0); }
+        .toast-success { background: var(--success); color: white; }
+        .toast-error { background: var(--danger); color: white; }
+        .toast-info { background: var(--primary); color: white; }
+        .batch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+        .batch-item { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .batch-item img { width: 100%; height: 150px; object-fit: cover; }
+        .batch-item-info { padding: 8px; font-size: 12px; }
+        .video-timeline { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0; }
+        .video-frame-card { min-width: 180px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: pointer; transition: border-color 0.2s; }
+        .video-frame-card:hover { border-color: var(--primary); }
+        .video-frame-card.has-crack { border-color: var(--orange); }
+        .video-frame-card img { width: 100%; height: 120px; object-fit: cover; }
+        .video-frame-info { padding: 6px 8px; font-size: 11px; }
+        @media (max-width: 1024px) { .main-grid { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: repeat(2, 1fr); } .image-compare { grid-template-columns: 1fr; } .report-meta { grid-template-columns: 1fr; } }
+        @media print { .header, .btn, .result-tabs, .upload-zone, .form-group, .slider-group, .upload-mode-tabs { display: none !important; } .main-grid { grid-template-columns: 1fr; } .card { box-shadow: none; border: 1px solid #ddd; } .tab-content.active { display: block !important; } }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-inner">
+        <div class="header-logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            <div>
+                <div class="header-title">墙体裂缝检测与审核报告系统</div>
+                <div class="header-subtitle">Wall Crack Detection & Audit Report System</div>
+            </div>
+        </div>
+        <div class="header-badge">
+            <span class="badge">YOLO11</span>
+            <span class="badge">QWEN-VL</span>
+            <span class="badge">AI双模型</span>
+            <a href="/annotation" class="badge" style="cursor:pointer;text-decoration:none;color:white;">🏷️ 标注</a>
+            <a href="/training" class="badge" style="cursor:pointer;text-decoration:none;color:white;">🎯 训练</a>
+            <a href="/evaluation" class="badge" style="cursor:pointer;text-decoration:none;color:white;">📊 评估</a>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="main-grid">
+        <div class="left-panel">
+            <div class="card">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    文件上传
+                </div>
+                <div class="card-body">
+                    <div class="upload-mode-tabs">
+                        <button class="mode-tab active" onclick="switchMode('single')">📷 单张图片</button>
+                        <button class="mode-tab" onclick="switchMode('batch')">📁 批量图片</button>
+                        <button class="mode-tab" onclick="switchMode('video')">🎬 视频文件</button>
+                        <button class="mode-tab" onclick="switchMode('dataset')">🗃️ 数据集</button>
+                    </div>
+
+                    <div id="singleMode">
+                        <div id="uploadZone" class="upload-zone">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            <p>拖拽图片到此处或 <strong style="color:var(--primary)">点击上传</strong></p>
+                            <p class="upload-hint">支持 PNG、JPG、BMP、WEBP，最大 100MB</p>
+                            <input type="file" id="fileInput" accept="image/*">
+                        </div>
+                        <div id="previewArea" style="display:none; margin-top: 16px;">
+                            <div class="preview-container">
+                                <img id="previewImage" src="" alt="预览">
+                                <button class="preview-remove" onclick="removeImage()" title="移除">&times;</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="batchMode" style="display:none;">
+                        <div id="batchUploadZone" class="upload-zone">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M8 12h8M12 8v8"/></svg>
+                            <p>拖拽多张图片或 <strong style="color:var(--primary)">点击选择</strong></p>
+                            <p class="upload-hint">支持批量选择多张图片</p>
+                            <input type="file" id="batchFileInput" accept="image/*" multiple>
+                        </div>
+                        <div id="batchFileList" class="file-list" style="display:none;"></div>
+                        <div id="batchCount" class="file-count" style="display:none;"></div>
+                    </div>
+
+                    <div id="videoMode" style="display:none;">
+                        <div id="videoUploadZone" class="upload-zone">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                            <p>拖拽视频文件或 <strong style="color:var(--primary)">点击选择</strong></p>
+                            <p class="upload-hint">支持 MP4、AVI、MOV、MKV、WMV、WEBM，最大 500MB</p>
+                            <input type="file" id="videoFileInput" accept="video/*">
+                        </div>
+                        <div id="videoPreview" style="display:none; margin-top: 16px;">
+                            <div style="font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;">
+                                🎬 <span id="videoFileName"></span>
+                                <button class="preview-remove" onclick="removeVideo()" style="position:static;width:20px;height:20px;font-size:12px;">&times;</button>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top:12px;">
+                            <label class="form-label">帧采样间隔</label>
+                            <input type="number" class="form-input" id="frameInterval" value="30" min="1" max="300" placeholder="每隔N帧采样一次">
+                        </div>
+                    </div>
+
+                    <div id="datasetMode" style="display:none;">
+                        <div style="text-align:center;padding:10px 0;">
+                            <p style="color:var(--text-secondary);font-size:13px;margin-bottom:12px;">选择已有数据集进行批量检测</p>
+                            <select id="datasetSelect" class="form-input" style="margin-bottom:12px;">
+                                <option value="">加载中...</option>
+                            </select>
+                            <div id="datasetInfo" style="display:none;background:#f8fafc;border-radius:8px;padding:12px;text-align:left;font-size:13px;margin-bottom:12px;">
+                                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                                    <span>图片数量：</span><strong id="dsImageCount">0</strong>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                                    <span>已标注：</span><strong id="dsAnnotatedCount">0</strong>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;">
+                                    <span>分割状态：</span><strong id="dsSplitStatus">未分割</strong>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+                                <a href="/annotation" class="btn btn-secondary" style="text-decoration:none;">🏷️ 去标注</a>
+                                <a href="/training" class="btn btn-secondary" style="text-decoration:none;">🎯 去训练</a>
+                                <a href="/evaluation" class="btn btn-secondary" style="text-decoration:none;">📊 去评估</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                    检测参数
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">检测模型</label>
+                        <select id="modelSelect" class="form-input">
+                            <option value="">默认模型 (yolo11n.pt)</option>
+                            <option value="__custom__">手动输入路径...</option>
+                        </select>
+                        <input type="text" id="customModelPath" class="form-input" placeholder="输入模型文件路径 (.pt)" style="display:none;margin-top:6px;">
+                        <div id="modelInfo" style="display:none;margin-top:8px;padding:8px;background:#f0fdf4;border-radius:6px;font-size:12px;color:#16a34a;"></div>
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header"><span class="form-label">置信度阈值</span><span class="slider-value" id="confValue">0.25</span></div>
+                        <input type="range" id="confSlider" min="0.05" max="0.95" step="0.05" value="0.25">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header"><span class="form-label">IOU阈值</span><span class="slider-value" id="iouValue">0.45</span></div>
+                        <input type="range" id="iouSlider" min="0.1" max="0.9" step="0.05" value="0.45">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    项目信息
+                </div>
+                <div class="card-body">
+                    <div class="form-group"><label class="form-label">项目名称</label><input type="text" class="form-input" id="projectName" value="墙体裂缝检测项目"></div>
+                    <div class="form-group"><label class="form-label">检测位置</label><input type="text" class="form-input" id="location" placeholder="请输入检测位置"></div>
+                    <div class="form-group"><label class="form-label">检测人员</label><input type="text" class="form-input" id="inspector" placeholder="请输入检测人员"></div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" id="analyzeBtn" onclick="startAnalysis()" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                开始检测与分析
+            </button>
+        </div>
+
+        <div class="right-panel">
+            <div class="card results-area">
+                <div class="result-tabs" id="resultTabs" style="display:none;">
+                    <button class="result-tab active" data-tab="detection" onclick="switchTab('detection')">🎯 检测结果</button>
+                    <button class="result-tab" data-tab="analysis" onclick="switchTab('analysis')">🤖 AI分析</button>
+                    <button class="result-tab" data-tab="report" onclick="switchTab('report')">📋 审核报告</button>
+                    <button class="result-tab" data-tab="export" onclick="switchTab('export')">📦 标注导出</button>
+                </div>
+                <div id="emptyState" class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <h3>等待检测</h3>
+                    <p>请上传墙体图片或视频，系统将自动进行裂缝检测与AI分析</p>
+                </div>
+                <div id="detectionTab" class="tab-content"></div>
+                <div id="analysisTab" class="tab-content"></div>
+                <div id="reportTab" class="tab-content"></div>
+                <div id="exportTab" class="tab-content"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-box">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loadingText">正在分析中...</div>
+        <div class="loading-subtext" id="loadingSubtext">YOLO11 + QWEN-VL 双模型协同工作</div>
+    </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let currentMode = 'single';
+let selectedFile = null;
+let batchFiles = [];
+let videoFile = null;
+let currentResult = null;
+let availableModels = [];
+
+const confSlider = document.getElementById('confSlider');
+const iouSlider = document.getElementById('iouSlider');
+confSlider.addEventListener('input', e => document.getElementById('confValue').textContent = e.target.value);
+iouSlider.addEventListener('input', e => document.getElementById('iouValue').textContent = e.target.value);
+
+async function loadModels() {
+    try {
+        const res = await fetch('/api/train/models');
+        if (!res.ok) return;
+        const data = await res.json();
+        availableModels = data.models || [];
+        const sel = document.getElementById('modelSelect');
+        sel.innerHTML = '<option value="">默认模型 (yolo11n.pt)</option>';
+        const trained = availableModels.filter(m => m.type === 'trained');
+        if (trained.length > 0) {
+            const grp = document.createElement('optgroup');
+            grp.label = '🎯 微调模型';
+            trained.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.path;
+                opt.textContent = m.name;
+                grp.appendChild(opt);
+            });
+            sel.appendChild(grp);
+        }
+        const custom = availableModels.filter(m => m.type === 'custom');
+        if (custom.length > 0) {
+            const grp = document.createElement('optgroup');
+            grp.label = '📦 自定义模型';
+            custom.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.path;
+                opt.textContent = m.name;
+                grp.appendChild(opt);
+            });
+            sel.appendChild(grp);
+        }
+        const pretrained = availableModels.filter(m => m.type === 'pretrained');
+        if (pretrained.length > 0) {
+            const grp = document.createElement('optgroup');
+            grp.label = '🔧 预训练模型';
+            pretrained.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.path;
+                opt.textContent = m.name;
+                grp.appendChild(opt);
+            });
+            sel.appendChild(grp);
+        }
+        sel.onchange = () => {
+            const info = document.getElementById('modelInfo');
+            const customInput = document.getElementById('customModelPath');
+            if (sel.value === '__custom__') {
+                customInput.style.display = 'block';
+                customInput.focus();
+                info.style.display = 'none';
+            } else {
+                customInput.style.display = 'none';
+                if (sel.value) {
+                    const m = availableModels.find(x => x.path === sel.value);
+                    info.textContent = m ? `已选择: ${m.name} (${m.type})` : '';
+                    info.style.display = 'block';
+                } else {
+                    info.style.display = 'none';
+                }
+            }
+        };
+    } catch (e) {}
+}
+loadModels();
+
+function switchMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('singleMode').style.display = mode === 'single' ? 'block' : 'none';
+    document.getElementById('batchMode').style.display = mode === 'batch' ? 'block' : 'none';
+    document.getElementById('videoMode').style.display = mode === 'video' ? 'block' : 'none';
+    document.getElementById('datasetMode').style.display = mode === 'dataset' ? 'block' : 'none';
+    if (mode === 'dataset') loadDatasetOptions();
+    updateAnalyzeBtn();
+}
+
+function updateAnalyzeBtn() {
+    const btn = document.getElementById('analyzeBtn');
+    if (currentMode === 'single') btn.disabled = !selectedFile;
+    else if (currentMode === 'batch') btn.disabled = batchFiles.length === 0;
+    else if (currentMode === 'video') btn.disabled = !videoFile;
+    else if (currentMode === 'dataset') btn.disabled = !document.getElementById('datasetSelect').value;
+}
+
+async function loadDatasetOptions() {
+    try {
+        const res = await fetch('/api/datasets');
+        if (!res.ok) throw new Error('加载失败');
+        const data = await res.json();
+        const datasets = data.datasets || data;
+        const sel = document.getElementById('datasetSelect');
+        sel.innerHTML = '<option value="">请选择数据集</option>';
+        datasets.forEach(ds => {
+            const opt = document.createElement('option');
+            opt.value = ds.dataset_id;
+            opt.textContent = `${ds.name} (${ds.image_count || 0}张图片)`;
+            sel.appendChild(opt);
+        });
+        sel.onchange = () => {
+            const id = sel.value;
+            const info = document.getElementById('datasetInfo');
+            if (!id) { info.style.display = 'none'; updateAnalyzeBtn(); return; }
+            const ds = datasets.find(d => d.dataset_id === id);
+            if (ds) {
+                document.getElementById('dsImageCount').textContent = ds.image_count || 0;
+                document.getElementById('dsAnnotatedCount').textContent = ds.annotated_count || 0;
+                document.getElementById('dsSplitStatus').textContent = ds.split_info ? '已分割' : '未分割';
+                document.getElementById('dsSplitStatus').style.color = ds.split_info ? 'var(--success)' : 'var(--warning)';
+                info.style.display = 'block';
+            }
+            updateAnalyzeBtn();
+        };
+    } catch (e) {
+        document.getElementById('datasetSelect').innerHTML = '<option value="">加载失败</option>';
+    }
+}
+
+// Single image
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('dragover'); if (e.dataTransfer.files[0]?.type.startsWith('image/')) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => { document.getElementById('previewImage').src = e.target.result; document.getElementById('previewArea').style.display = 'block'; uploadZone.style.display = 'none'; };
+    reader.readAsDataURL(file);
+    updateAnalyzeBtn();
+}
+function removeImage() { selectedFile = null; document.getElementById('previewArea').style.display = 'none'; uploadZone.style.display = 'block'; fileInput.value = ''; updateAnalyzeBtn(); }
+
+// Batch images
+const batchUploadZone = document.getElementById('batchUploadZone');
+const batchFileInput = document.getElementById('batchFileInput');
+batchUploadZone.addEventListener('click', () => batchFileInput.click());
+batchUploadZone.addEventListener('dragover', e => { e.preventDefault(); batchUploadZone.classList.add('dragover'); });
+batchUploadZone.addEventListener('dragleave', () => batchUploadZone.classList.remove('dragover'));
+batchUploadZone.addEventListener('drop', e => { e.preventDefault(); batchUploadZone.classList.remove('dragover'); handleBatchFiles(e.dataTransfer.files); });
+batchFileInput.addEventListener('change', e => handleBatchFiles(e.target.files));
+
+function handleBatchFiles(files) {
+    for (const f of files) { if (f.type.startsWith('image/')) batchFiles.push(f); }
+    renderBatchList();
+    updateAnalyzeBtn();
+}
+function renderBatchList() {
+    const list = document.getElementById('batchFileList');
+    const count = document.getElementById('batchCount');
+    if (batchFiles.length === 0) { list.style.display = 'none'; count.style.display = 'none'; return; }
+    list.style.display = 'block'; count.style.display = 'block';
+    list.innerHTML = batchFiles.map((f, i) => `<div class="file-item"><span class="file-item-name">📷 ${f.name}</span><span class="file-item-remove" onclick="removeBatchFile(${i})">&times;</span></div>`).join('');
+    count.textContent = `已选择 ${batchFiles.length} 张图片`;
+}
+function removeBatchFile(i) { batchFiles.splice(i, 1); renderBatchList(); updateAnalyzeBtn(); }
+
+// Video
+const videoUploadZone = document.getElementById('videoUploadZone');
+const videoFileInput = document.getElementById('videoFileInput');
+videoUploadZone.addEventListener('click', () => videoFileInput.click());
+videoUploadZone.addEventListener('dragover', e => { e.preventDefault(); videoUploadZone.classList.add('dragover'); });
+videoUploadZone.addEventListener('dragleave', () => videoUploadZone.classList.remove('dragover'));
+videoUploadZone.addEventListener('drop', e => { e.preventDefault(); videoUploadZone.classList.remove('dragover'); if (e.dataTransfer.files[0]?.type.startsWith('video/')) handleVideo(e.dataTransfer.files[0]); });
+videoFileInput.addEventListener('change', e => { if (e.target.files[0]) handleVideo(e.target.files[0]); });
+
+function handleVideo(file) {
+    videoFile = file;
+    document.getElementById('videoFileName').textContent = file.name + ` (${(file.size/1024/1024).toFixed(1)}MB)`;
+    document.getElementById('videoPreview').style.display = 'block';
+    updateAnalyzeBtn();
+}
+function removeVideo() { videoFile = null; document.getElementById('videoPreview').style.display = 'none'; videoFileInput.value = ''; updateAnalyzeBtn(); }
+
+function showLoading(t, s) { document.getElementById('loadingText').textContent = t || '正在分析中...'; document.getElementById('loadingSubtext').textContent = s || ''; document.getElementById('loadingOverlay').classList.add('active'); }
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
+function showToast(m, t) { const el = document.getElementById('toast'); el.textContent = m; el.className = `toast toast-${t||'info'}`; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 3000); }
+function switchTab(n) { document.querySelectorAll('.result-tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.querySelector(`[data-tab="${n}"]`).classList.add('active'); document.getElementById(`${n}Tab`).classList.add('active'); }
+
+async function startAnalysis() {
+    if (currentMode === 'single') await analyzeSingle();
+    else if (currentMode === 'batch') await analyzeBatch();
+    else if (currentMode === 'video') await analyzeVideo();
+    else if (currentMode === 'dataset') await analyzeDataset();
+}
+
+async function analyzeSingle() {
+    if (!selectedFile) return;
+    showLoading('正在进行裂缝检测...', 'YOLO11 目标检测模型运行中');
+    const fd = new FormData();
+    fd.append('file', selectedFile); fd.append('conf', confSlider.value); fd.append('iou', iouSlider.value);
+    const modelSelect = document.getElementById('modelSelect');
+    let modelPath = modelSelect.value;
+    if (modelPath === '__custom__') {
+        modelPath = document.getElementById('customModelPath').value.trim();
+    }
+    if (modelPath) fd.append('model_path', modelPath);
+    fd.append('project_name', document.getElementById('projectName').value);
+    fd.append('location', document.getElementById('location').value);
+    fd.append('inspector', document.getElementById('inspector').value);
+    try {
+        const res = await fetch('/api/analyze', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error((await res.json()).detail || '分析失败');
+        currentResult = await res.json();
+        hideLoading(); renderResults(currentResult); showToast('检测分析完成！', 'success');
+    } catch (e) { hideLoading(); showToast(`分析失败: ${e.message}`, 'error'); }
+}
+
+async function analyzeBatch() {
+    if (batchFiles.length === 0) return;
+    showLoading(`正在批量检测 ${batchFiles.length} 张图片...`, 'YOLO11 批量检测中');
+    const fd = new FormData();
+    batchFiles.forEach(f => fd.append('files', f));
+    fd.append('conf', confSlider.value); fd.append('iou', iouSlider.value);
+    fd.append('project_name', document.getElementById('projectName').value);
+    fd.append('location', document.getElementById('location').value);
+    fd.append('inspector', document.getElementById('inspector').value);
+    const modelSelect2 = document.getElementById('modelSelect');
+    let mp2 = modelSelect2.value;
+    if (mp2 === '__custom__') mp2 = document.getElementById('customModelPath').value.trim();
+    if (mp2) fd.append('model_path', mp2);
+    try {
+        if (!res.ok) throw new Error((await res.json()).detail || '分析失败');
+        currentResult = await res.json();
+        hideLoading(); renderResults(currentResult); showToast('批量检测完成！', 'success');
+    } catch (e) { hideLoading(); showToast(`分析失败: ${e.message}`, 'error'); }
+}
+
+async function analyzeVideo() {
+    if (!videoFile) return;
+    showLoading('正在分析视频帧...', 'YOLO11 逐帧检测中，请耐心等待');
+    const fd = new FormData();
+    fd.append('file', videoFile); fd.append('conf', confSlider.value); fd.append('iou', iouSlider.value);
+    fd.append('frame_interval', document.getElementById('frameInterval').value);
+    fd.append('project_name', document.getElementById('projectName').value);
+    fd.append('location', document.getElementById('location').value);
+    fd.append('inspector', document.getElementById('inspector').value);
+    const modelSelectV = document.getElementById('modelSelect');
+    let mpV = modelSelectV.value;
+    if (mpV === '__custom__') mpV = document.getElementById('customModelPath').value.trim();
+    if (mpV) fd.append('model_path', mpV);
+    try {
+        const res = await fetch('/api/analyze_video', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error((await res.json()).detail || '分析失败');
+        currentResult = await res.json();
+        hideLoading(); renderResults(currentResult); showToast('视频检测完成！', 'success');
+    } catch (e) { hideLoading(); showToast(`分析失败: ${e.message}`, 'error'); }
+}
+
+async function analyzeDataset() {
+    const datasetId = document.getElementById('datasetSelect').value;
+    if (!datasetId) { showToast('请选择数据集', 'error'); return; }
+    showLoading('正在对数据集进行批量检测...', 'YOLO11 批量检测中');
+    try {
+        const dsRes = await fetch(`/api/datasets/${datasetId}/images?page=1&page_size=9999`);
+        if (!dsRes.ok) throw new Error('获取数据集图片失败');
+        const imgData = await dsRes.json();
+        const images = imgData.images || [];
+        if (images.length === 0) throw new Error('数据集中没有图片');
+
+        const fd = new FormData();
+        for (const img of images) {
+            const imgRes = await fetch(`/datasets/${datasetId}/images/${encodeURIComponent(img.filename)}`);
+            if (!imgRes.ok) continue;
+            const blob = await imgRes.blob();
+            fd.append('files', blob, img.filename);
+        }
+        fd.append('conf', confSlider.value);
+        fd.append('iou', iouSlider.value);
+        fd.append('project_name', document.getElementById('projectName').value);
+        fd.append('location', document.getElementById('location').value);
+        fd.append('inspector', document.getElementById('inspector').value);
+        const modelSelectD = document.getElementById('modelSelect');
+        let mpD = modelSelectD.value;
+        if (mpD === '__custom__') mpD = document.getElementById('customModelPath').value.trim();
+        if (mpD) fd.append('model_path', mpD);
+
+        const res = await fetch('/api/analyze_batch', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error((await res.json()).detail || '分析失败');
+        currentResult = await res.json();
+        hideLoading(); renderResults(currentResult); showToast('数据集检测完成！', 'success');
+    } catch (e) { hideLoading(); showToast(`分析失败: ${e.message}`, 'error'); }
+}
+
+function renderResults(data) {
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultTabs').style.display = 'flex';
+    const reportType = data.report?.report_type || 'single';
+    renderDetection(data.detection, data.report, reportType);
+    renderAnalysis(data.analysis, data.report);
+    renderReport(data.report);
+    renderExport(data.report);
+    switchTab('detection');
+}
+
+function renderDetection(det, report, reportType) {
+    const severity = report?.detection_summary?.severity || report?.batch_summary?.severity || report?.video_summary?.severity || '未知';
+    const sevColors = { '轻微': '#22c55e', '一般': '#eab308', '严重': '#f97316', '危险': '#ef4444', '无': '#94a3b8' };
+    const sevColor = sevColors[severity] || '#94a3b8';
+    let html = '';
+
+    if (reportType === 'batch') {
+        const results = det.results || [];
+        html += `<div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" style="color:var(--primary)">${det.total_images||0}</div><div class="stat-label">检测图片数</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--primary)">${det.total_cracks||0}</div><div class="stat-label">裂缝总数</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:${sevColor}">${severity}</div><div class="stat-label">最严重程度</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--primary)">${((det.max_confidence||0)*100).toFixed(1)}%</div><div class="stat-label">最大置信度</div></div>
+        </div>`;
+        html += '<h4 style="margin-bottom:12px;">各图片检测结果</h4><div class="batch-grid">';
+        results.forEach(r => {
+            const imgSev = r.summary?.severity || '无';
+            const imgColor = sevColors[imgSev] || '#94a3b8';
+            const imgUrl = r.annotated_image_url || '';
+            html += `<div class="batch-item" style="border-color:${r.total_count>0?imgColor:'var(--border)'}">
+                ${imgUrl ? `<img src="${imgUrl}?t=${Date.now()}" alt="${r.source_file}">` : ''}
+                <div class="batch-item-info">
+                    <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.source_file||''}</div>
+                    <div style="color:${imgColor};font-weight:600">${imgSev} | ${r.total_count||0}处裂缝</div>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+    } else if (reportType === 'video') {
+        const info = det.video_info || {};
+        const frames = det.frames || [];
+        const crackFrames = frames.filter(f => f.total_count > 0);
+        html += `<div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" style="color:var(--primary)">${info.frames_analyzed||0}</div><div class="stat-label">分析帧数</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--orange)">${det.frames_with_cracks||0}</div><div class="stat-label">含裂缝帧</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:${sevColor}">${severity}</div><div class="stat-label">最严重程度</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--text-secondary)">${info.duration||0}s</div><div class="stat-label">视频时长</div></div>
+        </div>`;
+        html += `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">含裂缝帧预览（共${crackFrames.length}帧）</div>`;
+        html += '<div class="video-timeline">';
+        crackFrames.slice(0, 20).forEach(f => {
+            const imgUrl = f.annotated_image_url || '';
+            html += `<div class="video-frame-card has-crack">
+                ${imgUrl ? `<img src="${imgUrl}?t=${Date.now()}" alt="帧${f.frame_index}">` : ''}
+                <div class="video-frame-info">
+                    <div>帧 #${f.frame_index} | ${f.frame_time}s</div>
+                    <div style="color:var(--orange);font-weight:600">${f.total_count}处裂缝</div>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+        if (crackFrames.length > 20) html += `<div style="font-size:12px;color:var(--text-secondary);margin-top:8px;">仅显示前20帧，完整结果请查看报告</div>`;
+    } else {
+        html += `<div class="image-compare">
+            <div class="image-box"><div class="image-box-label">📷 原始图片</div><img id="originalImage" src="${document.getElementById('previewImage')?.src||''}" alt="原始"></div>
+            <div class="image-box"><div class="image-box-label">🔍 检测结果</div><img src="${det.annotated_image_url||''}?t=${Date.now()}" alt="检测结果"></div>
+        </div>`;
+        html += `<div class="stats-grid" style="margin-top:20px;">
+            <div class="stat-card"><div class="stat-value" style="color:var(--primary)">${det.total_count||0}</div><div class="stat-label">检测裂缝数</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:${sevColor}">${severity}</div><div class="stat-label">严重程度</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--primary)">${((det.summary?.max_confidence||0)*100).toFixed(1)}%</div><div class="stat-label">最大置信度</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--text-secondary)">${det.image_size?.width||'-'}×${det.image_size?.height||'-'}</div><div class="stat-label">图片尺寸</div></div>
+        </div>`;
+        const dets = det.detections || [];
+        if (dets.length > 0) {
+            html += '<table class="detection-table"><thead><tr><th>#</th><th>裂缝类型</th><th>置信度</th><th>位置 (x1,y1)-(x2,y2)</th><th>面积</th></tr></thead><tbody>';
+            dets.forEach((d, i) => {
+                const cc = d.confidence > 0.7 ? '#22c55e' : d.confidence > 0.4 ? '#eab308' : '#f97316';
+                html += `<tr><td>${i+1}</td><td><span class="tag">${d.class_name}</span></td><td><div style="display:flex;align-items:center;gap:8px;"><div class="confidence-bar"><div class="confidence-fill" style="width:${d.confidence*100}%;background:${cc}"></div></div><span style="font-weight:600;color:${cc}">${(d.confidence*100).toFixed(1)}%</span></div></td><td style="font-size:12px;font-family:monospace">(${d.bbox.x1},${d.bbox.y1})-(${d.bbox.x2},${d.bbox.y2})</td><td>${d.area}px²</td></tr>`;
+            });
+            html += '</tbody></table>';
+        } else {
+            html += '<div style="text-align:center;padding:20px;color:var(--text-secondary)">未检测到裂缝</div>';
+        }
+    }
+    document.getElementById('detectionTab').innerHTML = html;
+}
+
+function renderAnalysis(analysisResult, report) {
+    const a = analysisResult.analysis || {};
+    const isMock = analysisResult.mock;
+    let html = '';
+    if (isMock) html += `<div style="margin-bottom:16px;padding:8px 12px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;font-size:13px;color:#a16207;">⚠️ 未配置 DASHSCOPE_API_KEY，当前为模拟分析结果。</div>`;
+    html += `<div class="analysis-section"><div class="analysis-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>裂缝识别</div><div class="analysis-text">${a.crack_description||'未检测到裂缝'}</div></div>`;
+    if (a.crack_types?.length) html += `<div class="analysis-section"><div class="analysis-section-title">裂缝分类</div><div class="tag-list">${a.crack_types.map(t=>`<span class="tag">${t}</span>`).join('')}</div></div>`;
+    const sev = a.severity||'未知'; const sevCls = {'轻微':'tag-success','一般':'tag-warning','严重':'tag-danger','危险':'tag-danger'}[sev]||'';
+    html += `<div class="analysis-section"><div class="analysis-section-title">严重程度评估</div><div style="display:flex;gap:12px;align-items:center;"><span class="tag ${sevCls}" style="font-size:16px;padding:6px 16px;">${sev}</span><span style="color:var(--text-secondary);font-size:13px;">预估宽度: ${a.estimated_width||'未知'}</span></div></div>`;
+    if (a.possible_causes?.length) html += `<div class="analysis-section"><div class="analysis-section-title">可能原因</div><div class="tag-list">${a.possible_causes.map(c=>`<span class="tag tag-warning">${c}</span>`).join('')}</div></div>`;
+    html += `<div class="analysis-section"><div class="analysis-section-title">风险评估</div><div class="analysis-text">${a.risk_assessment||'暂无评估'}</div><div style="margin-top:8px;display:flex;gap:8px;align-items:center;"><span style="font-size:13px;color:var(--text-secondary);">风险等级:</span><span class="tag ${a.risk_level==='高'||a.risk_level==='极高'?'tag-danger':a.risk_level==='中'?'tag-warning':'tag-success'}">${a.risk_level||'未知'}</span><span style="font-size:13px;color:var(--text-secondary);margin-left:8px;">紧急程度:</span><span class="tag ${a.urgency==='立即处理'?'tag-danger':a.urgency==='尽快处理'?'tag-warning':''}">${a.urgency||'待评估'}</span></div></div>`;
+    if (a.repair_suggestions?.length) html += `<div class="analysis-section"><div class="analysis-section-title">修复建议</div><ul class="report-rec-list">${a.repair_suggestions.map(s=>`<li>${s}</li>`).join('')}</ul></div>`;
+    html += `<div class="analysis-section"><div class="analysis-section-title">专业综合意见</div><div class="analysis-text" style="border-left-color:#f97316;">${a.professional_opinion||'暂无意见'}</div></div>`;
+    document.getElementById('analysisTab').innerHTML = html;
+}
+
+function renderReport(report) {
+    if (!report) return;
+    const sev = report.detection_summary?.severity || report.batch_summary?.severity || report.video_summary?.severity || '未知';
+    const sevColors = {'轻微':'#22c55e','一般':'#eab308','严重':'#f97316','危险':'#ef4444'};
+    const sevColor = sevColors[sev]||'#94a3b8';
+    const rType = report.report_type || 'single';
+    const titleMap = {single:'墙体裂缝检测审核报告', batch:'墙体裂缝批量检测审核报告', video:'墙体裂缝视频检测审核报告'};
+    let html = `<div class="report-container">
+        <div class="report-header-section"><h2>🏗️ ${titleMap[rType]||titleMap.single}</h2><div style="font-size:14px;opacity:0.9;">报告编号: ${report.report_id} | 生成时间: ${report.generated_at}</div></div>
+        <div class="report-meta">
+            <div class="report-meta-item"><div class="report-meta-label">项目名称</div><div class="report-meta-value">${report.project_info?.project_name||'-'}</div></div>
+            <div class="report-meta-item"><div class="report-meta-label">检测位置</div><div class="report-meta-value">${report.project_info?.location||'-'}</div></div>
+            <div class="report-meta-item"><div class="report-meta-label">检测人员</div><div class="report-meta-value">${report.project_info?.inspector||'-'}</div></div>
+        </div>
+        <div class="report-section"><div class="report-section-header">📊 检测概要</div><div class="report-section-body">
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-value" style="color:${sevColor}">${sev}</div><div class="stat-label">严重程度</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:var(--primary)">${report.detection_summary?.total_cracks||report.batch_summary?.total_cracks||report.video_summary?.total_detections||0}</div><div class="stat-label">裂缝数量</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:var(--primary)">${((report.detection_summary?.max_confidence||report.batch_summary?.max_confidence||report.video_summary?.max_confidence||0)*100).toFixed(1)}%</div><div class="stat-label">最大置信度</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:${sevColor}">${report.ai_analysis?.risk_level||'-'}</div><div class="stat-label">风险等级</div></div>
+            </div>
+        </div></div>
+        <div class="report-section"><div class="report-section-header">🤖 AI分析结果</div><div class="report-section-body">
+            <div style="margin-bottom:12px;"><strong>裂缝描述：</strong>${report.ai_analysis?.crack_description||'-'}</div>
+            <div style="margin-bottom:12px;"><strong>预估宽度：</strong>${report.ai_analysis?.estimated_width||'-'}</div>
+            <div style="margin-bottom:12px;"><strong>可能原因：</strong>${(report.ai_analysis?.possible_causes||[]).join('、')||'-'}</div>
+            <div style="margin-bottom:12px;"><strong>风险评估：</strong>${report.ai_analysis?.risk_assessment||'-'}</div>
+            <div style="margin-bottom:12px;"><strong>紧急程度：</strong><span style="color:${sevColor};font-weight:600;">${report.ai_analysis?.urgency||'-'}</span></div>
+        </div></div>
+        <div class="report-section"><div class="report-section-header">📝 检测结论</div><div class="report-section-body"><div class="report-conclusion">${report.conclusion||'-'}</div></div></div>
+        <div class="report-section"><div class="report-section-header">✅ 处理建议</div><div class="report-section-body"><ol class="report-rec-list">${(report.recommendations||[]).map(r=>`<li>${r}</li>`).join('')}</ol></div></div>
+        <div class="report-actions">
+            <button class="btn btn-primary" onclick="printReport()" style="width:auto;">🖨️ 打印报告</button>
+            <button class="btn btn-secondary" onclick="downloadReport()" style="width:auto;">📥 下载JSON</button>
+            <button class="btn btn-success" onclick="exportAnnotations()" style="width:auto;">📦 导出标注</button>
+        </div>
+    </div>`;
+    document.getElementById('reportTab').innerHTML = html;
+}
+
+function renderExport(report) {
+    if (!report) return;
+    const rid = report.report_id;
+    let html = `<div style="text-align:center;padding:40px 20px;">
+        <h3 style="margin-bottom:16px;">📦 标注数据导出</h3>
+        <p style="color:var(--text-secondary);margin-bottom:24px;">导出包含裂缝位置、置信度等标注数据，支持多种格式</p>
+        <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+            <div style="border:1px solid var(--border);border-radius:12px;padding:24px;width:200px;text-align:center;">
+                <div style="font-size:32px;margin-bottom:8px;">📄</div>
+                <div style="font-weight:600;margin-bottom:4px;">JSON + CSV</div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">标注数据+YOLO标签+报告</div>
+                <button class="btn btn-primary" onclick="doExport('${rid}','all')" style="font-size:13px;padding:8px 16px;">导出全部</button>
+            </div>
+            <div style="border:1px solid var(--border);border-radius:12px;padding:24px;width:200px;text-align:center;">
+                <div style="font-size:32px;margin-bottom:8px;">📊</div>
+                <div style="font-weight:600;margin-bottom:4px;">仅CSV</div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">表格化标注数据</div>
+                <button class="btn btn-secondary" onclick="doExport('${rid}','csv')" style="font-size:13px;padding:8px 16px;">导出CSV</button>
+            </div>
+            <div style="border:1px solid var(--border);border-radius:12px;padding:24px;width:200px;text-align:center;">
+                <div style="font-size:32px;margin-bottom:8px;">🏷️</div>
+                <div style="font-weight:600;margin-bottom:4px;">YOLO标签</div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">YOLO格式标注文件</div>
+                <button class="btn btn-secondary" onclick="doExport('${rid}','yolo')" style="font-size:13px;padding:8px 16px;">导出YOLO</button>
+            </div>
+        </div>
+        <div style="margin-top:24px;padding:16px;background:#f8fafc;border-radius:8px;text-align:left;font-size:13px;color:var(--text-secondary);">
+            <strong>导出内容说明：</strong><br>
+            • <strong>annotations.json</strong>：结构化标注数据（裂缝类型、位置坐标、置信度）<br>
+            • <strong>annotations.csv</strong>：表格化标注数据，可用Excel打开<br>
+            • <strong>labels/</strong>：YOLO格式标注文件，可用于模型训练<br>
+            • <strong>report.json</strong>：完整检测报告<br>
+            • <strong>annotated_images/</strong>：带标注框的检测结果图
+        </div>
+    </div>`;
+    document.getElementById('exportTab').innerHTML = html;
+}
+
+async function doExport(reportId, format) {
+    showToast('正在打包导出...', 'info');
+    try {
+        const fd = new FormData();
+        fd.append('format', format);
+        const res = await fetch(`/api/export/${reportId}`, { method: 'POST', body: fd });
+        if (!res.ok) throw new Error('导出失败');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `裂缝检测标注导出_${reportId}.zip`; a.click();
+        URL.revokeObjectURL(url);
+        showToast('导出成功！', 'success');
+    } catch (e) { showToast(`导出失败: ${e.message}`, 'error'); }
+}
+
+function printReport() { switchTab('report'); setTimeout(() => window.print(), 300); }
+function downloadReport() {
+    if (!currentResult?.report) return;
+    const r = currentResult.report;
+    const blob = new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `墙体裂缝检测报告_${r.report_id}.json`; a.click();
+    URL.revokeObjectURL(url); showToast('报告已下载', 'success');
+}
+function exportAnnotations() { switchTab('export'); }
+</script>
+</body>
+</html>

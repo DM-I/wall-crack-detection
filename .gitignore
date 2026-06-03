@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific - large binary files
+static/uploads/*
+static/results/*
+static/reports/*
+static/video_frames/*
+static/exports/*
+!static/uploads/.gitkeep
+!static/results/.gitkeep
+!static/reports/.gitkeep
+!static/video_frames/.gitkeep
+!static/exports/.gitkeep
+
+# Model weights (too large, use separate storage)
+weights/*.pt
+*.pt
+
+# Datasets (large, use separate storage)
+datasets/*/
+!datasets/.gitkeep
+
+# Training outputs (large)
+training/*/
+!training/.gitkeep
+
+# Evaluation outputs
+evaluation/*/
+!evaluation/.gitkeep
+
+# Temp files
+_run_server.py
+
+# Environment
+.env

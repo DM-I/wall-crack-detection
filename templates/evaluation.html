@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型评估 - 墙体裂缝检测系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #3b82f6; --primary-dark: #2563eb; --success: #22c55e;
+            --warning: #eab308; --danger: #ef4444; --orange: #f97316;
+            --bg: #f0f4f8; --card: #ffffff; --text: #1e293b; --text-secondary: #64748b;
+            --border: #e2e8f0; --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            --radius: 12px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+        .header { background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #3b82f6 100%); color: white; padding: 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 20px rgba(37,99,235,0.3); }
+        .header-inner { max-width: 1600px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+        .header-logo { display: flex; align-items: center; gap: 12px; }
+        .header-logo svg { width: 32px; height: 32px; }
+        .header-title { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+        .header-subtitle { font-size: 11px; opacity: 0.8; }
+        .header-badge { display: flex; gap: 8px; align-items: center; }
+        .badge { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .nav-links { display: flex; gap: 6px; margin-left: 24px; }
+        .nav-link { color: rgba(255,255,255,0.8); text-decoration: none; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+        .nav-link:hover { background: rgba(255,255,255,0.15); color: white; }
+        .nav-link.active { background: rgba(255,255,255,0.25); color: white; }
+        .header-left { display: flex; align-items: center; }
+        .container { max-width: 1600px; margin: 0 auto; padding: 16px 24px; }
+        .main-grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; align-items: start; }
+        .left-panel { display: flex; flex-direction: column; gap: 12px; }
+        .right-panel { display: flex; flex-direction: column; gap: 16px; }
+        .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+        .card-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+        .card-header svg { width: 16px; height: 16px; color: var(--primary); }
+        .card-body { padding: 16px; }
+        .form-group { margin-bottom: 12px; }
+        .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+        .form-input { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; transition: border-color 0.2s; outline: none; }
+        .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .form-select { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; outline: none; background: white; cursor: pointer; }
+        .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .form-hint { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .param-section { margin-bottom: 16px; }
+        .param-section-title { font-size: 13px; font-weight: 700; color: var(--primary-dark); padding: 8px 0 6px; border-bottom: 1px solid #eff6ff; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .param-section-title .icon { font-size: 14px; }
+        .param-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+        .param-grid .form-group { margin-bottom: 0; }
+        .param-grid .form-label { font-size: 11px; }
+        .param-grid .form-input { font-size: 12px; padding: 6px 8px; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn svg { width: 16px; height: 16px; }
+        .btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37,99,235,0.4); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: #f1f5f9; color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #16a34a; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        .btn-block { width: 100%; }
+        .btn-group { display: flex; gap: 8px; }
+        .eval-actions { display: flex; gap: 8px; margin-top: 4px; }
+        .eval-actions .btn { flex: 1; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+        .metric-card { background: #f8fafc; border-radius: 10px; padding: 16px; text-align: center; border: 1px solid var(--border); transition: all 0.2s; }
+        .metric-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(59,130,246,0.1); }
+        .metric-value { font-size: 26px; font-weight: 700; line-height: 1.2; }
+        .metric-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; font-weight: 500; }
+        .metric-icon { font-size: 20px; margin-bottom: 4px; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .data-table th { background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: var(--text-secondary); border-bottom: 2px solid var(--border); font-size: 12px; }
+        .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+        .data-table tr:hover td { background: #f8fafc; }
+        .tag { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; background: #eff6ff; color: var(--primary); border: 1px solid #bfdbfe; }
+        .tag-success { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+        .tag-danger { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+        .tag-warning { background: #fefce8; color: #a16207; border-color: #fde68a; }
+        .tag-info { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+        .empty-state svg { width: 64px; height: 64px; color: #cbd5e1; margin-bottom: 12px; }
+        .empty-state h3 { font-size: 16px; margin-bottom: 6px; color: var(--text); }
+        .empty-state p { font-size: 13px; }
+        .toast { position: fixed; top: 80px; right: 24px; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; z-index: 2000; transform: translateX(120%); transition: transform 0.3s; box-shadow: var(--shadow-lg); }
+        .toast.show { transform: translateX(0); }
+        .toast-success { background: var(--success); color: white; }
+        .toast-error { background: var(--danger); color: white; }
+        .toast-info { background: var(--primary); color: white; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; }
+        .loading-overlay.active { display: flex; }
+        .loading-box { background: white; border-radius: var(--radius); padding: 28px 40px; text-align: center; box-shadow: var(--shadow-lg); }
+        .loading-spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 15px; font-weight: 600; color: var(--text); }
+        .loading-subtext { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+        .left-panel-scroll { max-height: calc(100vh - 100px); overflow-y: auto; padding-right: 4px; }
+        .left-panel-scroll::-webkit-scrollbar { width: 4px; }
+        .left-panel-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+        .compare-checkbox-list { max-height: 180px; overflow-y: auto; }
+        .compare-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; margin-bottom: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s; }
+        .compare-item:hover { background: #f1f5f9; }
+        .compare-item input[type="checkbox"] { accent-color: var(--primary); width: 14px; height: 14px; }
+        .compare-item-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .compare-item-metric { font-weight: 600; color: var(--primary); font-size: 11px; }
+        .canvas-container { background: #fafbfc; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; }
+        .canvas-container canvas { display: block; width: 100%; }
+        .recommendation-list { list-style: none; counter-reset: rec; }
+        .recommendation-list li { counter-increment: rec; padding: 10px 0; border-bottom: 1px solid #f1f5f9; display: flex; gap: 10px; align-items: flex-start; }
+        .recommendation-list li::before { content: counter(rec); min-width: 24px; height: 24px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+        .recommendation-list li:last-child { border-bottom: none; }
+        .recommendation-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+        .recommendation-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-badge.running { background: #dbeafe; color: #2563eb; animation: pulse 2s infinite; }
+        .status-badge.completed { background: #dcfce7; color: #16a34a; }
+        .status-badge.failed { background: #fef2f2; color: #dc2626; }
+        .status-badge.pending { background: #f1f5f9; color: #64748b; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .progress-bar-container { background: #e2e8f0; border-radius: 8px; height: 8px; overflow: hidden; margin-bottom: 8px; }
+        .progress-bar-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, #3b82f6, #2563eb); transition: width 0.5s ease; }
+        .progress-bar-fill.completed { background: linear-gradient(90deg, #22c55e, #16a34a); }
+        .progress-bar-fill.failed { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        .progress-info { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; }
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .chart-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+        .chart-card .card-header { padding: 10px 14px; font-size: 13px; }
+        .chart-card .card-body { padding: 12px; }
+        @media (max-width: 1200px) { .main-grid { grid-template-columns: 1fr; } .charts-grid { grid-template-columns: 1fr; } .metrics-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 768px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-inner">
+        <div class="header-left">
+            <div class="header-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
+                <div>
+                    <div class="header-title">墙体裂缝检测系统</div>
+                    <div class="header-subtitle">模型评估模块</div>
+                </div>
+            </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link">🏠 首页</a>
+                <a href="/annotation" class="nav-link">🏷️ 数据标注</a>
+                <a href="/training" class="nav-link">🎓 模型训练</a>
+                <a href="/evaluation" class="nav-link active">📊 模型评估</a>
+            </div>
+        </div>
+        <div class="header-badge">
+            <span class="badge">YOLO11</span>
+            <span class="badge">QWEN-VL</span>
+            <span class="badge">AI双模型</span>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="main-grid">
+        <div class="left-panel">
+            <div class="left-panel-scroll">
+                <div class="card">
+                    <div class="card-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        评估配置
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">模型路径</label>
+                            <select class="form-select" id="modelPathSelect">
+                                <option value="">请选择模型</option>
+                            </select>
+                            <div class="form-hint">从已训练模型中选择，或输入自定义路径</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">自定义模型路径</label>
+                            <input type="text" class="form-input" id="customModelPath" placeholder="如: runs/train/exp/weights/best.pt">
+                            <div class="form-hint">留空则使用上方选择的模型</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">评估数据集</label>
+                            <select class="form-select" id="datasetSelect">
+                                <option value="">请选择数据集</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                        评估参数
+                    </div>
+                    <div class="card-body">
+                        <div class="param-section">
+                            <div class="param-section-title"><span class="icon">⚙️</span> 检测参数</div>
+                            <div class="param-grid">
+                                <div class="form-group">
+                                    <label class="form-label">conf 阈值</label>
+                                    <input type="number" class="form-input" id="conf" value="0.25" step="0.05" min="0.05" max="0.95">
+                                    <div class="form-hint">默认: 0.25</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">iou 阈值</label>
+                                    <input type="number" class="form-input" id="iou" value="0.6" step="0.05" min="0.1" max="0.9">
+                                    <div class="form-hint">默认: 0.6</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">图像尺寸</label>
+                                    <input type="number" class="form-input" id="imgsz" value="640" step="32" min="32">
+                                    <div class="form-hint">默认: 640</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">批次大小</label>
+                                    <input type="number" class="form-input" id="batch_size" value="16" min="1">
+                                    <div class="form-hint">默认: 16</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="param-section">
+                            <div class="param-section-title"><span class="icon">📂</span> 数据拆分</div>
+                            <div class="form-group">
+                                <label class="form-label">评估集</label>
+                                <select class="form-select" id="split">
+                                    <option value="val">验证集 (val)</option>
+                                    <option value="test">测试集 (test)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="eval-actions">
+                            <button class="btn btn-primary" id="startEvalBtn" onclick="startEvaluation()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                开始评估
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                        模型对比
+                    </div>
+                    <div class="card-body">
+                        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">选择2个及以上已完成的评估进行对比</div>
+                        <div id="compareList" class="compare-checkbox-list">
+                            <div style="text-align:center;padding:16px;color:var(--text-secondary);font-size:12px;">暂无可对比的评估</div>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <button class="btn btn-secondary btn-block btn-sm" onclick="compareModels()" id="compareBtn" disabled>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                                对比选中模型
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="card" id="evalStatusCard" style="display:none;">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    评估状态
+                </div>
+                <div class="card-body" id="evalStatusContent"></div>
+            </div>
+
+            <div class="card" id="metricsCard" style="display:none;">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    评估指标概览
+                </div>
+                <div class="card-body" id="metricsContent"></div>
+            </div>
+
+            <div class="card" id="perClassCard" style="display:none;">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                    各类别指标
+                </div>
+                <div class="card-body" style="padding:0;" id="perClassContent"></div>
+            </div>
+
+            <div class="charts-grid" id="chartsGrid" style="display:none;">
+                <div class="chart-card">
+                    <div class="card-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                        混淆矩阵
+                    </div>
+                    <div class="card-body"><canvas id="confusionMatrixCanvas" height="320"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="card-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                        模型对比 (mAP50-95)
+                    </div>
+                    <div class="card-body"><canvas id="comparisonChartCanvas" height="320"></canvas></div>
+                </div>
+            </div>
+
+            <div class="card" id="historyCard">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    评估历史
+                </div>
+                <div class="card-body" style="padding:0;" id="historyContent">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <h3>暂无评估记录</h3>
+                        <p>请在左侧配置评估参数并开始评估</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="recommendationsCard" style="display:none;">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    优化建议
+                </div>
+                <div class="card-body" id="recommendationsContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-box">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loadingText">处理中...</div>
+        <div class="loading-subtext" id="loadingSubtext"></div>
+    </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let evaluations = [];
+let activeEvalId = null;
+let evalTimer = null;
+
+function showToast(m, t) {
+    const el = document.getElementById('toast');
+    el.textContent = m;
+    el.className = `toast toast-${t||'info'}`;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function showLoading(t, s) {
+    document.getElementById('loadingText').textContent = t || '处理中...';
+    document.getElementById('loadingSubtext').textContent = s || '';
+    document.getElementById('loadingOverlay').classList.add('active');
+}
+
+function hideLoading() {
+    document.getElementById('loadingOverlay').classList.remove('active');
+}
+
+async function loadModels() {
+    try {
+        const res = await fetch('/api/train/models');
+        if (!res.ok) return;
+        const data = await res.json();
+        const sel = document.getElementById('modelPathSelect');
+        sel.innerHTML = '<option value="">请选择模型</option>';
+        const models = data.models || data || [];
+        models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.value || m.path || m.name;
+            opt.textContent = m.label || m.name;
+            sel.appendChild(opt);
+        });
+    } catch (e) {}
+}
+
+async function loadDatasets() {
+    try {
+        const res = await fetch('/api/datasets');
+        if (!res.ok) throw new Error('加载失败');
+        const data = await res.json();
+        const datasets = data.datasets || data;
+        const sel = document.getElementById('datasetSelect');
+        sel.innerHTML = '<option value="">请选择数据集</option>';
+        datasets.forEach(ds => {
+            const opt = document.createElement('option');
+            opt.value = ds.dataset_id;
+            opt.textContent = `${ds.name} (${ds.image_count || 0}张图片${ds.split_info ? ' · 已分割' : ''})`;
+            sel.appendChild(opt);
+        });
+    } catch (e) {
+        showToast('加载数据集失败: ' + e.message, 'error');
+    }
+}
+
+async function loadEvaluations() {
+    try {
+        const res = await fetch('/api/eval/list');
+        if (!res.ok) throw new Error('加载失败');
+        const data = await res.json();
+        evaluations = data.evaluations || data;
+        renderHistory();
+        renderCompareList();
+        const running = evaluations.find(e => e.status === 'running' || e.status === 'pending');
+        if (running) {
+            activeEvalId = running.eval_id;
+            startEvalPolling();
+        }
+    } catch (e) {
+        showToast('加载评估记录失败: ' + e.message, 'error');
+    }
+}
+
+async function startEvaluation() {
+    const modelSelect = document.getElementById('modelPathSelect');
+    const customPath = document.getElementById('customModelPath').value.trim();
+    const modelPath = customPath || modelSelect.value;
+    if (!modelPath) { showToast('请选择或输入模型路径', 'error'); return; }
+    const datasetId = document.getElementById('datasetSelect').value;
+    if (!datasetId) { showToast('请选择评估数据集', 'error'); return; }
+    const fd = new FormData();
+    fd.append('model_path', modelPath);
+    fd.append('dataset_id', datasetId);
+    fd.append('conf', document.getElementById('conf').value);
+    fd.append('iou', document.getElementById('iou').value);
+    fd.append('imgsz', document.getElementById('imgsz').value);
+    fd.append('batch_size', document.getElementById('batch_size').value);
+    fd.append('split', document.getElementById('split').value);
+    showLoading('正在启动评估...', '请稍候');
+    try {
+        const res = await fetch('/api/eval/start', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error((await res.json()).detail || '启动评估失败');
+        const data = await res.json();
+        const evalResult = data.evaluation || data;
+        activeEvalId = evalResult.eval_id || data.eval_id || data.id;
+        hideLoading();
+        showToast('评估已启动', 'success');
+        startEvalPolling();
+        await loadEvaluations();
+    } catch (e) {
+        hideLoading();
+        showToast('启动评估失败: ' + e.message, 'error');
+    }
+}
+
+function startEvalPolling() {
+    stopEvalPolling();
+    fetchEvalStatus();
+    evalTimer = setInterval(fetchEvalStatus, 5000);
+}
+
+function stopEvalPolling() {
+    if (evalTimer) { clearInterval(evalTimer); evalTimer = null; }
+}
+
+async function fetchEvalStatus() {
+    if (!activeEvalId) return;
+    try {
+        const res = await fetch(`/api/eval/${activeEvalId}`);
+        if (!res.ok) throw new Error('获取状态失败');
+        const data = await res.json();
+        renderEvalStatus(data);
+        if (data.status === 'completed') {
+            stopEvalPolling();
+            renderEvalResults(data);
+            showToast('评估完成！', 'success');
+            await loadEvaluations();
+        } else if (data.status === 'failed') {
+            stopEvalPolling();
+            showToast('评估失败: ' + (data.error || '未知错误'), 'error');
+            await loadEvaluations();
+        }
+    } catch (e) {}
+}
+
+function renderEvalStatus(e) {
+    const card = document.getElementById('evalStatusCard');
+    card.style.display = 'block';
+    const el = document.getElementById('evalStatusContent');
+    const statusMap = { running: '评估中', completed: '已完成', failed: '失败', pending: '等待中', interrupted: '已中断' };
+    const statusLabel = statusMap[e.status] || e.status || '未知';
+    const progress = e.progress || 0;
+    const modelShort = (e.model_path || e.model || '-');
+    el.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                评估 #${e.eval_id || e.id || activeEvalId}
+            </div>
+            <span class="status-badge ${e.status}">${statusLabel}</span>
+        </div>
+        ${e.status === 'running' || e.status === 'pending' ? `
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill ${e.status}" style="width:${progress}%"></div>
+        </div>` : ''}
+        <div class="progress-info">
+            <span>模型: ${modelShort.length > 40 ? '...' + modelShort.slice(-40) : modelShort}</span>
+            <span>数据集: ${e.dataset_id || e.dataset || '-'}</span>
+            ${e.split ? `<span>评估集: ${e.split}</span>` : ''}
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--text-secondary);">
+            <span>conf: ${e.conf != null ? e.conf : '-'}</span>
+            <span>iou: ${e.iou != null ? e.iou : '-'}</span>
+            <span>imgsz: ${e.imgsz || '-'}</span>
+            <span>batch: ${e.batch_size || '-'}</span>
+        </div>
+    `;
+}
+
+function renderEvalResults(data) {
+    const results = data.results || data;
+    const metrics = results.metrics || data.metrics || {};
+    const map50 = metrics.map50 || metrics.mAP50 || metrics['mAP50'] || metrics['metrics/mAP50(B)'] || 0;
+    const map5095 = metrics.map50_95 || metrics.mAP50_95 || metrics['mAP50-95'] || metrics['metrics/mAP50-95(B)'] || 0;
+    const precision = metrics.precision || metrics['metrics/precision(B)'] || 0;
+    const recall = metrics.recall || metrics['metrics/recall(B)'] || 0;
+    const f1 = metrics.f1 || (precision + recall > 0 ? 2 * precision * recall / (precision + recall) : 0);
+
+    document.getElementById('metricsCard').style.display = 'block';
+    document.getElementById('metricsContent').innerHTML = `
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-icon">🎯</div>
+                <div class="metric-value" style="color:var(--primary)">${(map50 * 100).toFixed(1)}%</div>
+                <div class="metric-label">mAP50</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">📊</div>
+                <div class="metric-value" style="color:var(--primary-dark)">${(map5095 * 100).toFixed(1)}%</div>
+                <div class="metric-label">mAP50-95</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">✅</div>
+                <div class="metric-value" style="color:var(--success)">${(precision * 100).toFixed(1)}%</div>
+                <div class="metric-label">Precision</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">🔍</div>
+                <div class="metric-value" style="color:var(--orange)">${(recall * 100).toFixed(1)}%</div>
+                <div class="metric-label">Recall</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">⚖️</div>
+                <div class="metric-value" style="color:#8b5cf6">${(f1 * 100).toFixed(1)}%</div>
+                <div class="metric-label">F1 Score</div>
+            </div>
+        </div>
+    `;
+
+    const perClass = results.per_class_metrics || metrics.per_class || metrics.class_metrics || [];
+    if (perClass.length > 0) {
+        document.getElementById('perClassCard').style.display = 'block';
+        let tableHtml = `<table class="data-table">
+            <thead><tr>
+                <th>类别名称</th><th>mAP50</th><th>mAP50-95</th><th>Precision</th><th>Recall</th>
+            </tr></thead><tbody>`;
+        perClass.forEach(c => {
+            const cMap50 = c.map50 || c.mAP50 || c['mAP50'] || 0;
+            const cMap5095 = c.map50_95 || c.mAP50_95 || c['mAP50-95'] || 0;
+            const cPrec = c.precision || c['precision'] || 0;
+            const cRec = c.recall || c['recall'] || 0;
+            tableHtml += `<tr>
+                <td><span class="tag">${c.name || c.class_name || '-'}</span></td>
+                <td>${(cMap50 * 100).toFixed(1)}%</td>
+                <td>${(cMap5095 * 100).toFixed(1)}%</td>
+                <td>${(cPrec * 100).toFixed(1)}%</td>
+                <td>${(cRec * 100).toFixed(1)}%</td>
+            </tr>`;
+        });
+        tableHtml += '</tbody></table>';
+        document.getElementById('perClassContent').innerHTML = tableHtml;
+    }
+
+    document.getElementById('chartsGrid').style.display = 'grid';
+    const confusionMatrix = results.confusion_matrix || data.confusion_matrix;
+    const classNames = metrics.class_names || perClass.map(c => c.name || c.class_name) || [];
+    drawConfusionMatrix(confusionMatrix, classNames);
+
+    renderRecommendations(metrics, perClass);
+}
+
+function drawConfusionMatrix(matrix, classNames) {
+    const canvas = document.getElementById('confusionMatrixCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 320 * dpr;
+    canvas.style.height = '320px';
+    ctx.scale(dpr, dpr);
+    const W = rect.width;
+    const H = 320;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#fafbfc';
+    ctx.fillRect(0, 0, W, H);
+
+    if (!matrix || !matrix.length || matrix.length === 0) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('暂无混淆矩阵数据', W / 2, H / 2);
+        return;
+    }
+
+    const labels = classNames.length > 0 ? classNames : matrix.map((_, i) => `类别${i + 1}`);
+    const allLabels = [...labels, '背景'];
+    const n = matrix.length;
+    const pad = { top: 30, right: 20, bottom: 50, left: 70 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+    const cellW = plotW / n;
+    const cellH = plotH / n;
+
+    let maxVal = 0;
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            if (matrix[i][j] > maxVal) maxVal = matrix[i][j];
+        }
+    }
+    if (maxVal === 0) maxVal = 1;
+
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            const val = matrix[i][j];
+            const norm = val / maxVal;
+            const x = pad.left + j * cellW;
+            const y = pad.top + i * cellH;
+            const r = Math.round(59 + (255 - 59) * norm);
+            const g = Math.round(130 + (255 - 130) * (1 - norm));
+            const b = Math.round(246 + (255 - 246) * (1 - norm));
+            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+            if (norm > 0.5) {
+                ctx.fillStyle = '#ffffff';
+            } else {
+                ctx.fillStyle = '#1e293b';
+            }
+            ctx.font = `${Math.min(12, cellW / 4)}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(typeof val === 'number' ? (val * 100).toFixed(0) + '%' : val, x + cellW / 2, y + cellH / 2);
+        }
+    }
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < n; i++) {
+        const label = allLabels[i] || `C${i}`;
+        const y = pad.top + i * cellH + cellH / 2;
+        ctx.fillText(label.length > 6 ? label.substring(0, 6) + '..' : label, pad.left - 6, y);
+    }
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let j = 0; j < n; j++) {
+        const label = allLabels[j] || `C${j}`;
+        const x = pad.left + j * cellW + cellW / 2;
+        ctx.fillText(label.length > 6 ? label.substring(0, 6) + '..' : label, x, pad.top + plotH + 6);
+    }
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('预测类别', pad.left + plotW / 2, H - 8);
+    ctx.save();
+    ctx.translate(12, pad.top + plotH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('真实类别', 0, 0);
+    ctx.restore();
+}
+
+function drawComparisonChart(comparisonData) {
+    const canvas = document.getElementById('comparisonChartCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 320 * dpr;
+    canvas.style.height = '320px';
+    ctx.scale(dpr, dpr);
+    const W = rect.width;
+    const H = 320;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#fafbfc';
+    ctx.fillRect(0, 0, W, H);
+
+    if (!comparisonData || comparisonData.length === 0) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('暂无对比数据', W / 2, H / 2);
+        return;
+    }
+
+    const pad = { top: 30, right: 30, bottom: 60, left: 60 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+    const n = comparisonData.length;
+    const barWidth = Math.min(60, plotW / n * 0.6);
+    const gap = (plotW - barWidth * n) / (n + 1);
+    const colors = ['#3b82f6', '#f97316', '#22c55e', '#8b5cf6', '#ef4444', '#eab308', '#06b6d4', '#ec4899'];
+
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 5; i++) {
+        const yVal = i * 20;
+        const y = pad.top + plotH - (yVal / 100) * plotH;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(W - pad.right, y);
+        ctx.stroke();
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(yVal + '%', pad.left - 8, y + 3);
+    }
+
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, pad.top);
+    ctx.lineTo(pad.left, pad.top + plotH);
+    ctx.lineTo(W - pad.right, pad.top + plotH);
+    ctx.stroke();
+
+    comparisonData.forEach((item, i) => {
+        const m = item.metrics || item;
+        const val = (m.map50_95 || m.mAP50_95 || m['mAP50-95'] || 0) * 100;
+        const x = pad.left + gap + i * (barWidth + gap);
+        const barH = (val / 100) * plotH;
+        const y = pad.top + plotH - barH;
+        const color = colors[i % colors.length];
+
+        const grad = ctx.createLinearGradient(x, y, x, pad.top + plotH);
+        grad.addColorStop(0, color);
+        grad.addColorStop(1, color + '80');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        const r = 4;
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + barWidth - r, y);
+        ctx.quadraticCurveTo(x + barWidth, y, x + barWidth, y + r);
+        ctx.lineTo(x + barWidth, pad.top + plotH);
+        ctx.lineTo(x, pad.top + plotH);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.fill();
+
+        ctx.fillStyle = color;
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(val.toFixed(1) + '%', x + barWidth / 2, y - 8);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        const label = item.label || item.model_path || item.model || item.id || `模型${i + 1}`;
+        ctx.fillText(label.length > 8 ? label.substring(0, 8) + '..' : label, x + barWidth / 2, pad.top + plotH + 16);
+    });
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('mAP50-95 (%)', pad.left + plotW / 2, H - 6);
+}
+
+function renderRecommendations(metrics, perClass) {
+    const card = document.getElementById('recommendationsCard');
+    card.style.display = 'block';
+    const el = document.getElementById('recommendationsContent');
+    const recommendations = [];
+    const map50 = metrics.map50 || metrics.mAP50 || metrics['mAP50'] || 0;
+    const map5095 = metrics.map50_95 || metrics.mAP50_95 || metrics['mAP50-95'] || 0;
+    const precision = metrics.precision || metrics['metrics/precision(B)'] || 0;
+    const recall = metrics.recall || metrics['metrics/recall(B)'] || 0;
+
+    if (map50 < 0.5) {
+        recommendations.push({ title: 'mAP50偏低', desc: '模型整体检测精度不足，建议增加训练数据量、调整模型结构或增加训练轮次。' });
+    }
+    if (precision < 0.6 && recall > 0.7) {
+        recommendations.push({ title: '精确率偏低，误检较多', desc: '模型倾向于过度检测，建议提高置信度阈值(conf)或增加负样本数据。' });
+    }
+    if (recall < 0.6 && precision > 0.7) {
+        recommendations.push({ title: '召回率偏低，漏检较多', desc: '模型检测不够充分，建议降低置信度阈值、增加数据增强或使用更大模型。' });
+    }
+    if (map5095 < 0.3 && map50 > 0.5) {
+        recommendations.push({ title: 'mAP50-95与mAP50差距较大', desc: '检测框定位精度不足，建议增加box损失权重、使用更大输入尺寸(imgsz)或增加训练轮次。' });
+    }
+    if (perClass.length > 0) {
+        const weakClasses = perClass.filter(c => (c.map50 || c.mAP50 || 0) < 0.4);
+        if (weakClasses.length > 0) {
+            const names = weakClasses.map(c => c.name || c.class_name).join('、');
+            recommendations.push({ title: '部分类别表现较弱', desc: `类别 ${names} 的mAP50低于40%，建议增加该类别样本数量或检查标注质量。` });
+        }
+    }
+    if (precision > 0.8 && recall > 0.8 && map50 > 0.7) {
+        recommendations.push({ title: '模型表现优秀', desc: '各项指标均较高，模型可投入实际使用。建议定期使用新数据重新评估以监控性能。' });
+    }
+    if (recommendations.length === 0) {
+        recommendations.push({ title: '模型表现中等', desc: '建议尝试调整超参数、增加训练数据或使用更大模型来提升性能。' });
+    }
+
+    el.innerHTML = `<ol class="recommendation-list">${recommendations.map(r => `
+        <li>
+            <div>
+                <div class="recommendation-title">${r.title}</div>
+                <div class="recommendation-desc">${r.desc}</div>
+            </div>
+        </li>
+    `).join('')}</ol>`;
+}
+
+function renderHistory() {
+    const el = document.getElementById('historyContent');
+    if (!evaluations || evaluations.length === 0) {
+        el.innerHTML = `<div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <h3>暂无评估记录</h3>
+            <p>请在左侧配置评估参数并开始评估</p>
+        </div>`;
+        return;
+    }
+    const statusTagMap = {
+        running: '<span class="tag tag-info">评估中</span>',
+        completed: '<span class="tag tag-success">已完成</span>',
+        failed: '<span class="tag tag-danger">失败</span>',
+        pending: '<span class="tag">等待中</span>',
+        interrupted: '<span class="tag tag-warning">已中断</span>'
+    };
+    let html = `<table class="data-table">
+        <thead><tr>
+            <th>ID</th><th>模型</th><th>数据集</th><th>状态</th><th>mAP50</th><th>mAP50-95</th><th>Precision</th><th>Recall</th><th>时间</th><th>操作</th>
+        </tr></thead><tbody>`;
+    evaluations.forEach(e => {
+        const statusTag = statusTagMap[e.status] || `<span class="tag">${e.status}</span>`;
+        const m = e.results?.metrics || {};
+        const map50 = m.mAP50 || m.map50 || m['mAP50'] || '-';
+        const map5095 = m.mAP50_95 || m.map50_95 || m['mAP50-95'] || '-';
+        const prec = m.precision || m['metrics/precision(B)'] || '-';
+        const rec = m.recall || m['metrics/recall(B)'] || '-';
+        const fmtPct = v => typeof v === 'number' ? (v * 100).toFixed(1) + '%' : v;
+        const model = e.model_path || '-';
+        const shortModel = model.length > 25 ? '...' + model.slice(-25) : model;
+        const isRunning = e.status === 'running' || e.status === 'pending';
+        const time = e.started_at || '-';
+        html += `<tr>
+            <td style="font-weight:600;">${e.eval_id}</td>
+            <td title="${model}" style="font-size:12px;">${shortModel}</td>
+            <td>${e.dataset_id || '-'}</td>
+            <td>${statusTag}</td>
+            <td>${fmtPct(map50)}</td>
+            <td>${fmtPct(map5095)}</td>
+            <td>${fmtPct(prec)}</td>
+            <td>${fmtPct(rec)}</td>
+            <td style="font-size:12px;">${time}</td>
+            <td>
+                <div class="btn-group">
+                    <button class="btn btn-secondary btn-sm" onclick="viewEvaluation('${e.eval_id}')" ${isRunning ? 'disabled' : ''}>查看</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteEvaluation('${e.eval_id}')" ${isRunning ? 'disabled' : ''}>删除</button>
+                </div>
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+function renderCompareList() {
+    const el = document.getElementById('compareList');
+    const completed = evaluations.filter(e => e.status === 'completed');
+    if (completed.length === 0) {
+        el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-secondary);font-size:12px;">暂无可对比的评估</div>';
+        document.getElementById('compareBtn').disabled = true;
+        return;
+    }
+    el.innerHTML = completed.map(e => {
+        const m = e.results?.metrics || {};
+        const map5095 = m.mAP50_95 || m.map50_95 || m['mAP50-95'] || 0;
+        const model = e.model_path || e.eval_id;
+        const shortModel = model.length > 30 ? '...' + model.slice(-30) : model;
+        return `<label class="compare-item">
+            <input type="checkbox" class="compare-check" value="${e.eval_id}" onchange="updateCompareBtn()">
+            <span class="compare-item-label" title="${model}">${shortModel}</span>
+            <span class="compare-item-metric">${(map5095 * 100).toFixed(1)}%</span>
+        </label>`;
+    }).join('');
+}
+
+function updateCompareBtn() {
+    const checked = document.querySelectorAll('.compare-check:checked');
+    document.getElementById('compareBtn').disabled = checked.length < 2;
+}
+
+async function compareModels() {
+    const checked = document.querySelectorAll('.compare-check:checked');
+    if (checked.length < 2) { showToast('请至少选择2个评估进行对比', 'error'); return; }
+    const evalIds = Array.from(checked).map(c => c.value);
+    showLoading('正在对比模型...', '请稍候');
+    try {
+        const res = await fetch('/api/eval/compare', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ eval_ids: evalIds })
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || '对比失败');
+        const data = await res.json();
+        hideLoading();
+        const comparisons = data.comparisons || data.results || [];
+        if (comparisons.length > 0) {
+            document.getElementById('chartsGrid').style.display = 'grid';
+            drawComparisonChart(comparisons);
+            showToast('模型对比完成', 'success');
+        }
+    } catch (e) {
+        hideLoading();
+        showToast('模型对比失败: ' + e.message, 'error');
+    }
+}
+
+async function viewEvaluation(id) {
+    activeEvalId = id;
+    try {
+        const res = await fetch(`/api/eval/${id}`);
+        if (!res.ok) throw new Error('获取详情失败');
+        const data = await res.json();
+        renderEvalStatus(data);
+        if (data.status === 'running' || data.status === 'pending') {
+            startEvalPolling();
+        } else if (data.status === 'completed') {
+            stopEvalPolling();
+            renderEvalResults(data);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+        showToast('获取评估详情失败: ' + e.message, 'error');
+    }
+}
+
+async function deleteEvaluation(id) {
+    if (!confirm('确定要删除此评估记录吗？')) return;
+    try {
+        const res = await fetch(`/api/eval/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('删除失败');
+        showToast('评估记录已删除', 'success');
+        if (activeEvalId === id) {
+            stopEvalPolling();
+            activeEvalId = null;
+        }
+        await loadEvaluations();
+    } catch (e) {
+        showToast('删除失败: ' + e.message, 'error');
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    loadModels();
+    loadDatasets();
+    loadEvaluations();
+});
+
+window.addEventListener('resize', () => {
+    if (activeEvalId) fetchEvalStatus();
+});
+</script>
+</body>
+</html>
