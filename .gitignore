@@ -59,6 +59,7 @@ git.txt
 # Exclude from remote
 第一版/
 lw/
+docs/
 
 # API Keys
 *apiKey*.csv
