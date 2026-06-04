@@ -708,7 +708,7 @@ function renderDetection(det, report, reportType) {
             html += '<table class="detection-table"><thead><tr><th>#</th><th>裂缝类型</th><th>置信度</th><th>位置 (x1,y1)-(x2,y2)</th><th>面积</th></tr></thead><tbody>';
             dets.forEach((d, i) => {
                 const cc = d.confidence > 0.7 ? '#22c55e' : d.confidence > 0.4 ? '#eab308' : '#f97316';
-                html += `<tr><td>${i+1}</td><td><span class="tag">${d.class_name}</span></td><td><div style="display:flex;align-items:center;gap:8px;"><div class="confidence-bar"><div class="confidence-fill" style="width:${d.confidence*100}%;background:${cc}"></div></div><span style="font-weight:600;color:${cc}">${(d.confidence*100).toFixed(1)}%</span></div></td><td style="font-size:12px;font-family:monospace">(${d.bbox.x1},${d.bbox.y1})-(${d.bbox.x2},${d.bbox.y2})</td><td>${d.area}px²</td></tr>`;
+                html += `<tr><td>${i+1}</td><td><span class="tag">${d.class_name}</span></td><td><div style="display:flex;align-items:center;gap:8px;"><div class="confidence-bar"><div class="confidence-fill" style="width:${d.confidence*100}%;background:${cc}"></div></div><span style="font-weight:600;color:${cc}">${(d.confidence*100).toFixed(1)}%</span></div></td><td style="font-size:12px;font-family:monospace">(${d.bbox.x1},${d.bbox.y1})-(${d.bbox.x2},${d.bbox.y2})</td><td>${d.area_px||d.area||0}px²</td></tr>`;
             });
             html += '</tbody></table>';
         } else {
@@ -721,8 +721,11 @@ function renderDetection(det, report, reportType) {
 function renderAnalysis(analysisResult, report) {
     const a = analysisResult.analysis || {};
     const isMock = analysisResult.mock;
+    const apiError = analysisResult.api_error || '';
+    const apiHint = analysisResult.api_error_hint || '';
     let html = '';
-    if (isMock) html += `<div style="margin-bottom:16px;padding:8px 12px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;font-size:13px;color:#a16207;">⚠️ 未配置 DASHSCOPE_API_KEY，当前为模拟分析结果。</div>`;
+    if (apiError) html += `<div style="margin-bottom:16px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;"><div style="font-size:13px;color:#dc2626;font-weight:600;">⚠️ QWEN-VL API 调用失败</div><div style="font-size:12px;color:#991b1b;margin-top:4px;">${apiError}</div><div style="font-size:12px;color:#7f1d1d;margin-top:2px;">💡 ${apiHint||'自动回落至模拟分析模式'}</div></div>`;
+    else if (isMock) html += `<div style="margin-bottom:16px;padding:8px 12px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;font-size:13px;color:#a16207;">⚠️ 未配置 DASHSCOPE_API_KEY，当前为模拟分析结果。</div>`;
     html += `<div class="analysis-section"><div class="analysis-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>裂缝识别</div><div class="analysis-text">${a.crack_description||'未检测到裂缝'}</div></div>`;
     if (a.crack_types?.length) html += `<div class="analysis-section"><div class="analysis-section-title">裂缝分类</div><div class="tag-list">${a.crack_types.map(t=>`<span class="tag">${t}</span>`).join('')}</div></div>`;
     const sev = a.severity||'未知'; const sevCls = {'轻微':'tag-success','一般':'tag-warning','严重':'tag-danger','危险':'tag-danger'}[sev]||'';

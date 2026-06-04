@@ -35,7 +35,7 @@ PIXELS_PER_MM = 5.0  # 默认每毫米5像素（约200mm宽墙面在1000px图像
 CRACK_WIDTH_MIN_MM = 0.05  # 最小可检测裂缝宽度 (mm)
 
 DASHSCOPE_API_KEY = os.environ.get("DASHSCOPE_API_KEY", "")
-QWEN_MODEL = "qwen-vl-max-latest"
+QWEN_MODEL = "qwen3-vl-plus"
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "bmp", "tiff", "webp"}
 ALLOWED_VIDEO_EXTENSIONS = {"mp4", "avi", "mov", "mkv", "wmv", "flv", "webm"}

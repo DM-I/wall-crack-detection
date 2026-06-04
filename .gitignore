@@ -54,3 +54,8 @@ _run_server.py
 
 # Environment
 .env
+git.txt
+
+# API Keys
+*apiKey*.csv
+csqw-vl.py

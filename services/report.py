@@ -301,9 +301,9 @@ class ReportGenerator:
                             d.get("bbox", {}).get("y1", ""),
                             d.get("bbox", {}).get("x2", ""),
                             d.get("bbox", {}).get("y2", ""),
-                            d.get("width", ""),
-                            d.get("height", ""),
-                            d.get("area", ""),
+                            d.get("width_px", d.get("width", "")),
+                            d.get("height_px", d.get("height", "")),
+                            d.get("area_px", d.get("area", "")),
                         ])
             elif report_type == "video":
                 for item in report.get("frame_details", []):
@@ -319,9 +319,9 @@ class ReportGenerator:
                             d.get("bbox", {}).get("y1", ""),
                             d.get("bbox", {}).get("x2", ""),
                             d.get("bbox", {}).get("y2", ""),
-                            d.get("width", ""),
-                            d.get("height", ""),
-                            d.get("area", ""),
+                            d.get("width_px", d.get("width", "")),
+                            d.get("height_px", d.get("height", "")),
+                            d.get("area_px", d.get("area", "")),
                         ])
             else:
                 source = report.get("image_info", {}).get("filename", "")
@@ -334,9 +334,9 @@ class ReportGenerator:
                         d.get("bbox", {}).get("y1", ""),
                         d.get("bbox", {}).get("x2", ""),
                         d.get("bbox", {}).get("y2", ""),
-                        d.get("width", ""),
-                        d.get("height", ""),
-                        d.get("area", ""),
+                        d.get("width_px", d.get("width", "")),
+                        d.get("height_px", d.get("height", "")),
+                        d.get("area_px", d.get("area", "")),
                     ])
 
     def _write_yolo_labels(self, report, yolo_dir):

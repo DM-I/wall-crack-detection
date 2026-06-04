@@ -38,16 +38,21 @@ class QwenVLAnalyzer:
                 result_text = response.output.choices[0].message.content[0]["text"]
                 return self._parse_analysis(result_text, detection_info)
             else:
-                return {
-                    "success": False,
-                    "error": f"API调用失败: {response.code} - {response.message}",
-                    "raw_response": str(response),
-                }
+                # API Key valid but model not activated — fallback to mock
+                code = getattr(response, 'code', '')
+                msg = getattr(response, 'message', str(response))
+                result = self._mock_analysis(image_path, detection_info)
+                result["mock"] = True
+                result["api_error"] = f"{code} - {msg}"
+                result["api_error_hint"] = "请前往阿里云 DashScope 控制台开通 QWEN-VL 模型服务"
+                return result
         except Exception as e:
-            return {
-                "success": False,
-                "error": f"分析过程出错: {str(e)}",
-            }
+            # API call failed — fallback to mock
+            result = self._mock_analysis(image_path, detection_info)
+            result["mock"] = True
+            result["api_error"] = str(e)
+            result["api_error_hint"] = "请在阿里云控制台确认已开通模型服务且账户余额充足"
+            return result
 
     def _encode_image(self, image_path):
         with open(image_path, "rb") as f:
@@ -102,7 +107,7 @@ class QwenVLAnalyzer:
 - 严重程度: {summary.get('severity', '未知')}
 - 最大置信度: {summary.get('max_confidence', 0)}
 - 裂缝类型分布: {json.dumps(summary.get('class_distribution', {}), ensure_ascii=False)}
-- 各检测框详情: {json.dumps([{'类型': d['class_name'], '置信度': d['confidence'], '面积': d['area']} for d in detections], ensure_ascii=False)}
+- 各检测框详情: {json.dumps([{'类型': d['class_name'], '置信度': d['confidence'], '面积': d.get('area_px', d.get('area', 0))} for d in detections], ensure_ascii=False)}
 
 请结合以上目标检测结果进行更精确的分析。"""
 
