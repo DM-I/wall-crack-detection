@@ -56,6 +56,10 @@ _run_server.py
 .env
 git.txt
 
+# Exclude from remote
+第一版/
+lw/
+
 # API Keys
 *apiKey*.csv
 csqw-vl.py
